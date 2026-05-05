@@ -1,4 +1,4 @@
-# 🐉 Realm Forge: Professional D&D Character Builder
+# 🐉 DnDOnline: Professional D&D Character Builder
 
 ![Next.js](https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=next.js)
 ![TailwindCSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)
@@ -40,4 +40,4 @@
 
 1. Clone repository:
    ```bash
-   git clone [https://github.com/ryanmaulanabp/repo-name.git](https://github.com/ryanmaulanabp/repo-name.git)
+   git clone [https://github.com/ryanmaulanabp/repo-name.git](https://github.com/ryanmaulanabp/DnDOnline.git)
