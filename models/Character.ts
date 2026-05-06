@@ -35,7 +35,7 @@ export interface ICharacter extends Document {
   spellCastingStat: string;
   weapons: IWeapon[];
   
-  // Fitur Baru: Roleplay & Uang
+  // Fitur Roleplay & Uang
   roleplay: {
     traits: string;
     ideals: string;
@@ -49,6 +49,9 @@ export interface ICharacter extends Document {
     gp: number;
     pp: number;
   };
+
+  // Fitur Active Play: Conditions (Baru)
+  conditions: string[];
   
   createdAt: Date;
   updatedAt: Date;
@@ -90,7 +93,6 @@ const CharacterSchema = new Schema<ICharacter>(
     spellCastingStat: { type: String, default: "NONE" },
     weapons: [WeaponSchema],
     
-    // Schema Baru: Roleplay
     roleplay: {
       traits: { type: String, default: "" },
       ideals: { type: String, default: "" },
@@ -98,7 +100,6 @@ const CharacterSchema = new Schema<ICharacter>(
       flaws: { type: String, default: "" },
     },
     
-    // Schema Baru: Currency
     currency: {
       cp: { type: Number, default: 0 },
       sp: { type: Number, default: 0 },
@@ -106,13 +107,15 @@ const CharacterSchema = new Schema<ICharacter>(
       gp: { type: Number, default: 0 },
       pp: { type: Number, default: 0 },
     },
+
+    // Field baru untuk melacak kondisi (status)
+    conditions: [{ type: String, default: [] }],
   },
   { 
     timestamps: true 
   }
 );
 
-// Mencegah error "OverwriteModelError" saat Next.js melakukan hot-reload
 const Character = mongoose.models.Character || mongoose.model<ICharacter>("Character", CharacterSchema);
 
 export default Character;
