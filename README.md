@@ -40,5 +40,4 @@
 
 1. Clone repository:
    ```bash
-   git clone [https://github.com/ryanmaulanabp/repo-name.git](https://github.com/ryanmaulanabp/DnDOnline.git)
->>>>>>> 55c0ebb9be249c28904b454b47eab6e1c076b751
+   git clone https://github.com/ryanmaulanabp/DnDOnline.git

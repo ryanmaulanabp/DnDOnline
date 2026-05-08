@@ -211,84 +211,257 @@ export const BACKGROUNDS: Record<string, { desc: string, skills: string[]; equip
 };
 
 export const CLASSES: Record<string, any> = {
-  Barbarian: { image: "https://www.dndbeyond.com/avatars/43940/615/638607453021957927.jpeg?width=1000&height=1000&fit=bounds&quality=95&auto=webp", icon: "🪓", color: "from-red-700 to-orange-800", desc: "Pejuang buas yang menolak taktik peradaban, digerakkan sepenuhnya oleh amarah primal. Mereka mengandalkan kekuatan mentah, insting bertahan hidup mutlak, dan kemampuan untuk mengamuk (Rage) di medan tempur demi menahan kerusakan masif. Bagi Barbarian, kemarahan adalah senjata sekaligus perisai yang tak tertembus.", hitDie: 12, isCaster: false, primary: "STR", saves: ["STR", "CON"], proficiencies: { armor: "Light Armor, Medium Armor, Shields", weapons: "Simple Weapons, Martial Weapons", tools: "None" }, skillCount: 2, skillOptions: ["Animal Handling", "Athletics", "Intimidation", "Nature", "Perception", "Survival"], equipmentChoices: [{ id: "weapon1", options: ["A greataxe", "Any martial melee weapon"] }, { id: "weapon2", options: ["Two handaxes", "Any simple weapon"] }], baseEquipment: ["An explorer's pack", "4 javelins"] },
-  Bard: { image: "https://www.dndbeyond.com/avatars/43940/760/638607457244101778.jpeg?width=1000&height=1000&fit=bounds&quality=95&auto=webp", icon: "🎸", color: "from-pink-700 to-purple-800", desc: "Seniman magis yang menyadap benang-benang penciptaan multiverse melalui musik, puisi, dan orasi. Mereka ahli dalam memotivasi sekutu, membingungkan pikiran musuh, dan memanipulasi situasi sosial. Seorang Bard adalah perwujudan dari pepatah 'Pena lebih tajam dari pedang'.", hitDie: 8, isCaster: true, primary: "CHA", saves: ["DEX", "CHA"], proficiencies: { armor: "Light Armor", weapons: "Simple Weapons, Hand Crossbows, Longswords, Rapiers, Shortswords", tools: "Three musical instruments of your choice" }, skillCount: 3, skillOptions: ["Acrobatics", "Animal Handling", "Arcana", "Athletics", "Deception", "History", "Insight", "Intimidation", "Investigation", "Medicine", "Nature", "Perception", "Performance", "Persuasion", "Religion", "Sleight of Hand", "Stealth", "Survival"], cantripsKnown: 2, spellsKnown: 4, equipmentChoices: [{ id: "weapon", options: ["A rapier", "A longsword", "Any simple weapon"] }, { id: "pack", options: ["A diplomat's pack", "An entertainer's pack"] }, { id: "instrument", options: ["A lute", "Any other musical instrument"] }], baseEquipment: ["Leather armor", "A dagger"] },
-  Cleric: { image: "https://www.dndbeyond.com/avatars/43940/780/638607457552642121.jpeg?width=1000&height=1000&fit=bounds&quality=95&auto=webp", icon: "⚕️", color: "from-yellow-600 to-amber-700", desc: "Juara para dewa yang memegang sihir ilahi langsung dari alam surgawi. Cleric bukan sekadar penyembuh; mereka adalah komandan spiritual yang mampu menyembuhkan luka fatal, membangkitkan yang mati, memanggil badai kemarahan dewa, dan membakar mayat hidup (Undead) menjadi abu.", hitDie: 8, isCaster: true, primary: "WIS", saves: ["WIS", "CHA"], proficiencies: { armor: "Light Armor, Medium Armor, Shields", weapons: "Simple Weapons", tools: "None" }, skillCount: 2, skillOptions: ["History", "Insight", "Medicine", "Persuasion", "Religion"], cantripsKnown: 3, spellsKnown: 4, equipmentChoices: [{ id: "weapon", options: ["A mace", "A warhammer"] }, { id: "armor", options: ["Scale mail", "Leather armor", "Chain mail"] }, { id: "pack", options: ["A priest's pack", "An explorer's pack"] }], baseEquipment: ["A shield", "A holy symbol"] },
-  Druid: { image: "https://www.dndbeyond.com/avatars/43940/798/638607457907453415.jpeg?width=1000&height=1000&fit=bounds&quality=95&auto=webp", icon: "🌿", color: "from-green-700 to-emerald-800", desc: "Pendeta alam kuno yang menolak peradaban logam demi ikatan mistis dengan bumi. Druid dapat memanggil elemen alam, berbicara dengan flora dan fauna, serta merubah wujud fisik mereka menjadi berbagai binatang buas (Wild Shape) untuk mencabik-cabik ancaman.", hitDie: 8, isCaster: true, primary: "WIS", saves: ["INT", "WIS"], proficiencies: { armor: "Light/Medium Armor, Shields (non-metal)", weapons: "Clubs, Daggers, Darts, Javelins, Maces, Quarterstaffs, Scimitars, Sickles, Slings, Spears", tools: "Herbalism Kit" }, skillCount: 2, skillOptions: ["Arcana", "Animal Handling", "Insight", "Medicine", "Nature", "Perception", "Religion", "Survival"], cantripsKnown: 2, spellsKnown: 4, equipmentChoices: [{ id: "weapon", options: ["A wooden shield", "Any simple weapon"] }, { id: "weapon2", options: ["A scimitar", "Any simple melee weapon"] }], baseEquipment: ["Leather armor", "An explorer's pack", "A druidic focus"] },
-  Fighter: { image: "https://www.dndbeyond.com/avatars/43940/813/638607458268123998.jpeg?width=1000&height=1000&fit=bounds&quality=95&auto=webp", icon: "⚔️", color: "from-slate-600 to-slate-800", desc: "Ahli seni bela diri bersenjata dan taktik perang yang tak tertandingi oleh siapapun. Dari kesatria berbaju besi pelat tebal hingga penembak jitu mematikan, Fighter menguasai setiap jenis senjata dan memiliki fleksibilitas serangan tertinggi di medan pertempuran.", hitDie: 10, isCaster: false, primary: "STR", saves: ["STR", "CON"], proficiencies: { armor: "All Armor, Shields", weapons: "Simple Weapons, Martial Weapons", tools: "None" }, skillCount: 2, skillOptions: ["Acrobatics", "Animal Handling", "Athletics", "History", "Insight", "Intimidation", "Perception", "Survival"], equipmentChoices: [{ id: "armor", options: ["Chain mail", "Leather armor, longbow, and 20 arrows"] }, { id: "weapon1", options: ["A martial weapon and a shield", "Two martial weapons"] }, { id: "pack", options: ["A dungeoneer's pack", "An explorer's pack"] }], baseEquipment: [] },
-  Monk: { image: "https://www.dndbeyond.com/avatars/43940/744/638607456916761515.jpeg?width=1000&height=1000&fit=bounds&quality=95&auto=webp", icon: "👊", color: "from-cyan-600 to-blue-800", desc: "Petarung asketis yang telah membuka rahasia mistis dari energi kehidupan (Ki). Tanpa bantuan zirah tebal atau senjata tajam, Monk mampu berlari di atas air, menangkap panah dengan tangan kosong, dan melumpuhkan musuh dengan rentetan serangan mematikan.", hitDie: 8, isCaster: false, primary: "DEX", saves: ["STR", "DEX"], proficiencies: { armor: "None", weapons: "Simple Weapons, Shortswords", tools: "One type of artisan's tools or musical instrument" }, skillCount: 2, skillOptions: ["Acrobatics", "Athletics", "History", "Insight", "Religion", "Stealth"], equipmentChoices: [{ id: "weapon", options: ["A shortsword", "Any simple weapon"] }, { id: "pack", options: ["A dungeoneer's pack", "An explorer's pack"] }], baseEquipment: ["10 darts"] },
-  Paladin: { image: "https://www.dndbeyond.com/avatars/43940/832/638607458605123169.jpeg?width=1000&height=1000&fit=bounds&quality=95&auto=webp", icon: "🛡️", color: "from-yellow-500 to-yellow-700", desc: "Kesatria suci yang kekuatannya bersumber dari sumpah dan keyakinan absolut. Paladin memadukan keterampilan bela diri baja dengan sihir cahaya mematikan (Divine Smite) untuk mengenyahkan kejahatan mutlak, sekaligus menjadi tameng hidup bagi mereka yang tak berdaya.", hitDie: 10, isCaster: true, primary: "STR", saves: ["WIS", "CHA"], proficiencies: { armor: "All Armor, Shields", weapons: "Simple Weapons, Martial Weapons", tools: "None" }, skillCount: 2, skillOptions: ["Athletics", "Insight", "Intimidation", "Medicine", "Persuasion", "Religion"], cantripsKnown: 0, spellsKnown: 0, equipmentChoices: [{ id: "weapon1", options: ["A martial weapon and a shield", "Two martial weapons"] }, { id: "weapon2", options: ["Five javelins", "Any simple melee weapon"] }, { id: "pack", options: ["A priest's pack", "An explorer's pack"] }], baseEquipment: ["Chain mail", "A holy symbol"] },
-  Ranger: { image: "https://www.dndbeyond.com/avatars/43940/841/638607458994233790.jpeg?width=1000&height=1000&fit=bounds&quality=95&auto=webp", icon: "🏹", color: "from-emerald-700 to-green-900", desc: "Penjaga perbatasan yang berdiri di antara peradaban dan teror alam liar. Ranger adalah pengintai ahli, pemburu monster presisi tinggi, yang memanfaatkan kelicikan, keterampilan bersembunyi, dan sihir primitif untuk mengubah alam menjadi senjata mereka.", hitDie: 10, isCaster: true, primary: "DEX", saves: ["STR", "DEX"], proficiencies: { armor: "Light Armor, Medium Armor, Shields", weapons: "Simple Weapons, Martial Weapons", tools: "None" }, skillCount: 3, skillOptions: ["Animal Handling", "Athletics", "Insight", "Investigation", "Nature", "Perception", "Stealth", "Survival"], cantripsKnown: 0, spellsKnown: 0, equipmentChoices: [{ id: "armor", options: ["Scale mail", "Leather armor"] }, { id: "weapon1", options: ["Two shortswords", "Two simple melee weapons"] }, { id: "pack", options: ["A dungeoneer's pack", "An explorer's pack"] }], baseEquipment: ["A longbow and a quiver of 20 arrows"] },
-  Rogue: { image: "https://www.dndbeyond.com/avatars/43940/853/638607459373183811.jpeg?width=1000&height=1000&fit=bounds&quality=95&auto=webp", icon: "🗡️", color: "from-zinc-800 to-zinc-950", desc: "Bayangan mematikan yang mengandalkan keahlian siluman dan serangan mematikan pada titik lemah (Sneak Attack). Rogue bukan petarung garis depan, melainkan pakar membongkar kunci, melucuti perangkap, dan membunuh target sebelum mereka menyadari bahaya datang.", hitDie: 8, isCaster: false, primary: "DEX", saves: ["DEX", "INT"], proficiencies: { armor: "Light Armor", weapons: "Simple Weapons, Hand Crossbows, Longswords, Rapiers, Shortswords", tools: "Thieves' tools" }, skillCount: 4, skillOptions: ["Acrobatics", "Athletics", "Deception", "Insight", "Intimidation", "Investigation", "Perception", "Performance", "Persuasion", "Sleight of Hand", "Stealth"], equipmentChoices: [{ id: "weapon1", options: ["A rapier", "A shortsword"] }, { id: "weapon2", options: ["A shortbow and quiver of 20 arrows", "A shortsword"] }, { id: "pack", options: ["A burglar's pack", "A dungeoneer's pack", "An explorer's pack"] }], baseEquipment: ["Leather armor", "Two daggers", "Thieves' tools"] },
-  Sorcerer: { image: "https://www.dndbeyond.com/avatars/43940/871/638607459719752506.jpeg?width=1000&height=1000&fit=bounds&quality=95&auto=webp", icon: "✨", color: "from-red-600 to-rose-800", desc: "Mistikus yang memancarkan sihir dari dalam darah mereka sendiri, berkat garis keturunan eksotis, kutukan mistis, atau anomali kosmis. Sorcerer dapat memanipulasi hukum realitas secara langsung (Metamagic) tanpa perlu mempelajari buku sihir tebal.", hitDie: 6, isCaster: true, primary: "CHA", saves: ["CON", "CHA"], proficiencies: { armor: "None", weapons: "Daggers, Darts, Slings, Quarterstaffs, Light Crossbows", tools: "None" }, skillCount: 2, skillOptions: ["Arcana", "Deception", "Insight", "Intimidation", "Persuasion", "Religion"], cantripsKnown: 4, spellsKnown: 2, equipmentChoices: [{ id: "weapon", options: ["A light crossbow and 20 bolts", "Any simple weapon"] }, { id: "focus", options: ["A component pouch", "An arcane focus"] }, { id: "pack", options: ["A dungeoneer's pack", "An explorer's pack"] }], baseEquipment: ["Two daggers"] },
-  Warlock: { image: "https://www.dndbeyond.com/avatars/43940/890/638607460049450769.jpeg?width=1000&height=1000&fit=bounds&quality=95&auto=webp", icon: "👁️", color: "from-fuchsia-800 to-purple-950", desc: "Perapal mantra gelap yang mengikat perjanjian jiwa dengan entitas kuno penguasa kosmos (Iblis, Archfey, atau Dewa Kosmis). Sebagai bayaran atas rahasia terlarang (Eldritch Invocations), mereka melepaskan energi magis yang destruktif dan tak bisa dipahami nalar.", hitDie: 8, isCaster: true, primary: "CHA", saves: ["WIS", "CHA"], proficiencies: { armor: "Light Armor", weapons: "Simple Weapons", tools: "None" }, skillCount: 2, skillOptions: ["Arcana", "Deception", "History", "Intimidation", "Investigation", "Nature", "Religion"], cantripsKnown: 2, spellsKnown: 2, equipmentChoices: [{ id: "weapon", options: ["A light crossbow and 20 bolts", "Any simple weapon"] }, { id: "focus", options: ["A component pouch", "An arcane focus"] }, { id: "pack", options: ["A scholar's pack", "An dungeoneer's pack"] }], baseEquipment: ["Leather armor", "Any simple weapon", "Two daggers"] },
-  Wizard: { image: "https://www.dndbeyond.com/avatars/43940/902/638607460390730233.jpeg?width=1000&height=1000&fit=bounds&quality=95&auto=webp", icon: "📖", color: "from-blue-700 to-indigo-900", desc: "Sarjana magis paling intelektual yang merangkai realitas melalui rumus matematika kosmis di dalam buku sihir mereka. Dengan waktu dan persiapan, Wizard memiliki spektrum sihir paling mematikan dan luas di seluruh dimensi, dari ledakan elemen hingga manipulasi gravitasi.", hitDie: 6, isCaster: true, primary: "INT", saves: ["INT", "WIS"], proficiencies: { armor: "None", weapons: "Daggers, Darts, Slings, Quarterstaffs, Light Crossbows", tools: "None" }, skillCount: 2, skillOptions: ["Arcana", "History", "Insight", "Investigation", "Medicine", "Religion"], cantripsKnown: 3, spellsKnown: 6, equipmentChoices: [{ id: "weapon", options: ["A quarterstaff", "A dagger"] }, { id: "focus", options: ["A component pouch", "An arcane focus"] }, { id: "pack", options: ["A scholar's pack", "An explorer's pack"] }], baseEquipment: ["A spellbook"] },
+  Barbarian: { 
+    image: "https://www.dndbeyond.com/avatars/43940/615/638607453021957927.jpeg?width=1000&height=1000&fit=bounds&quality=95&auto=webp", 
+    icon: "🪓", color: "from-red-700 to-orange-800", 
+    desc: "Pejuang buas yang menolak taktik peradaban, digerakkan sepenuhnya oleh amarah primal. Mereka mengandalkan kekuatan mentah, insting bertahan hidup mutlak, dan kemampuan untuk mengamuk (Rage) di medan tempur demi menahan kerusakan masif. Bagi Barbarian, kemarahan adalah senjata sekaligus perisai yang tak tertembus.", 
+    hitDie: 12, isCaster: false, primary: "STR", saves: ["STR", "CON"], 
+    proficiencies: { armor: "Light Armor, Medium Armor, Shields", weapons: "Simple Weapons, Martial Weapons", tools: "None" }, 
+    skillCount: 2, skillOptions: ["Animal Handling", "Athletics", "Intimidation", "Nature", "Perception", "Survival"], 
+    equipmentChoices: [{ id: "weapon1", options: ["A greataxe", "Any martial melee weapon"] }, { id: "weapon2", options: ["Two handaxes", "Any simple weapon"] }], 
+    baseEquipment: ["An explorer's pack", "4 javelins"],
+    features: [
+      { name: "Rage", level: "1st level", desc: "Masuk ke kondisi mengamuk yang memberikan bonus damage dan ketahanan fisik." },
+      { name: "Unarmored Defense", level: "1st level", desc: "Saat tidak memakai armor, AC Anda adalah 10 + DEX + CON." }
+    ]
+  },
+  Bard: { 
+    image: "https://www.dndbeyond.com/avatars/43940/760/638607457244101778.jpeg?width=1000&height=1000&fit=bounds&quality=95&auto=webp", 
+    icon: "🎸", color: "from-pink-700 to-purple-800", 
+    desc: "Seniman magis yang menyadap benang-benang penciptaan multiverse melalui musik, puisi, dan orasi. Mereka ahli dalam memotivasi sekutu, membingungkan pikiran musuh, dan memanipulasi situasi sosial. Seorang Bard adalah perwujudan dari pepatah 'Pena lebih tajam dari pedang'.", 
+    hitDie: 8, isCaster: true, primary: "CHA", saves: ["DEX", "CHA"], 
+    proficiencies: { armor: "Light Armor", weapons: "Simple Weapons, Hand Crossbows, Longswords, Rapiers, Shortswords", tools: "Three musical instruments of your choice" }, 
+    skillCount: 3, skillOptions: ["Acrobatics", "Animal Handling", "Arcana", "Athletics", "Deception", "History", "Insight", "Intimidation", "Investigation", "Medicine", "Nature", "Perception", "Performance", "Persuasion", "Religion", "Sleight of Hand", "Stealth", "Survival"], 
+    cantripsKnown: 2, spellsKnown: 4, 
+    equipmentChoices: [{ id: "weapon", options: ["A rapier", "A longsword", "Any simple weapon"] }, { id: "pack", options: ["A diplomat's pack", "An entertainer's pack"] }, { id: "instrument", options: ["A lute", "Any other musical instrument"] }], 
+    baseEquipment: ["Leather armor", "A dagger"],
+    spellcasting: { cantrips: 2, spellsKnown: 4, slots: 2 },
+    features: [
+      { name: "Spellcasting", level: "1st level", desc: "Anda dapat merapal sihir menggunakan instrumen musik sebagai fokus magis." },
+      { name: "Bardic Inspiration", level: "1st level", desc: "Berikan d6 ekstra kepada kawan untuk ditambahkan pada roll mereka." }
+    ]
+  },
+  Cleric: { 
+    image: "https://www.dndbeyond.com/avatars/43940/780/638607457552642121.jpeg?width=1000&height=1000&fit=bounds&quality=95&auto=webp", 
+    icon: "⚕️", color: "from-yellow-600 to-amber-700", 
+    desc: "Juara para dewa yang memegang sihir ilahi langsung dari alam surgawi. Cleric bukan sekadar penyembuh; mereka adalah komandan spiritual yang mampu menyembuhkan luka fatal, membangkitkan yang mati, memanggil badai kemarahan dewa, dan membakar mayat hidup (Undead) menjadi abu.", 
+    hitDie: 8, isCaster: true, primary: "WIS", saves: ["WIS", "CHA"], 
+    proficiencies: { armor: "Light Armor, Medium Armor, Shields", weapons: "Simple Weapons", tools: "None" }, 
+    skillCount: 2, skillOptions: ["History", "Insight", "Medicine", "Persuasion", "Religion"], 
+    cantripsKnown: 3, spellsKnown: 4, 
+    equipmentChoices: [{ id: "weapon", options: ["A mace", "A warhammer"] }, { id: "armor", options: ["Scale mail", "Leather armor", "Chain mail"] }, { id: "pack", options: ["A priest's pack", "An explorer's pack"] }], 
+    baseEquipment: ["A shield", "A holy symbol"],
+    spellcasting: { cantrips: 3, spellsKnown: "WIS Mod + 1", slots: 2 },
+    features: [
+      { name: "Spellcasting", level: "1st level", desc: "Menyalurkan sihir ilahi langsung dari dewa sesembahan Anda." },
+      { name: "Divine Domain", level: "1st level", desc: "Mendapatkan spesialisasi domain ilahi yang memberi kemampuan ekstra." }
+    ]
+  },
+  Druid: { 
+    image: "https://www.dndbeyond.com/avatars/43940/798/638607457907453415.jpeg?width=1000&height=1000&fit=bounds&quality=95&auto=webp", 
+    icon: "🌿", color: "from-green-700 to-emerald-800", 
+    desc: "Pendeta alam kuno yang menolak peradaban logam demi ikatan mistis dengan bumi. Druid dapat memanggil elemen alam, berbicara dengan flora dan fauna, serta merubah wujud fisik mereka menjadi berbagai binatang buas (Wild Shape) untuk mencabik-cabik ancaman.", 
+    hitDie: 8, isCaster: true, primary: "WIS", saves: ["INT", "WIS"], 
+    proficiencies: { armor: "Light/Medium Armor, Shields (non-metal)", weapons: "Clubs, Daggers, Darts, Javelins, Maces, Quarterstaffs, Scimitars, Sickles, Slings, Spears", tools: "Herbalism Kit" }, 
+    skillCount: 2, skillOptions: ["Arcana", "Animal Handling", "Insight", "Medicine", "Nature", "Perception", "Religion", "Survival"], 
+    cantripsKnown: 2, spellsKnown: 4, 
+    equipmentChoices: [{ id: "weapon", options: ["A wooden shield", "Any simple weapon"] }, { id: "weapon2", options: ["A scimitar", "Any simple melee weapon"] }], 
+    baseEquipment: ["Leather armor", "An explorer's pack", "A druidic focus"],
+    spellcasting: { cantrips: 2, spellsKnown: "WIS Mod + 1", slots: 2 },
+    features: [
+      { name: "Druidic", level: "1st level", desc: "Mengetahui bahasa rahasia para Druid yang bisa disembunyikan di alam." },
+      { name: "Spellcasting", level: "1st level", desc: "Menarik magis dari esensi alam dan roh-roh binatang." }
+    ]
+  },
+  Fighter: { 
+    image: "https://www.dndbeyond.com/avatars/43940/813/638607458268123998.jpeg?width=1000&height=1000&fit=bounds&quality=95&auto=webp", 
+    icon: "⚔️", color: "from-slate-600 to-slate-800", 
+    desc: "Ahli seni bela diri bersenjata dan taktik perang yang tak tertandingi oleh siapapun. Dari kesatria berbaju besi pelat tebal hingga penembak jitu mematikan, Fighter menguasai setiap jenis senjata dan memiliki fleksibilitas serangan tertinggi di medan pertempuran.", 
+    hitDie: 10, isCaster: false, primary: "STR", saves: ["STR", "CON"], 
+    proficiencies: { armor: "All Armor, Shields", weapons: "Simple Weapons, Martial Weapons", tools: "None" }, 
+    skillCount: 2, skillOptions: ["Acrobatics", "Animal Handling", "Athletics", "History", "Insight", "Intimidation", "Perception", "Survival"], 
+    equipmentChoices: [{ id: "armor", options: ["Chain mail", "Leather armor, longbow, and 20 arrows"] }, { id: "weapon1", options: ["A martial weapon and a shield", "Two martial weapons"] }, { id: "pack", options: ["A dungeoneer's pack", "An explorer's pack"] }], 
+    baseEquipment: [],
+    features: [
+      { name: "Fighting Style", level: "1st level", desc: "Spesialisasi gaya bertarung seperti Archery, Defense, atau Dueling." },
+      { name: "Second Wind", level: "1st level", desc: "Memulihkan sebagian HP (1d10 + Fighter Level) sebagai Bonus Action." }
+    ]
+  },
+  Monk: { 
+    image: "https://www.dndbeyond.com/avatars/43940/744/638607456916761515.jpeg?width=1000&height=1000&fit=bounds&quality=95&auto=webp", 
+    icon: "👊", color: "from-cyan-600 to-blue-800", 
+    desc: "Petarung asketis yang telah membuka rahasia mistis dari energi kehidupan (Ki). Tanpa bantuan zirah tebal atau senjata tajam, Monk mampu berlari di atas air, menangkap panah dengan tangan kosong, dan melumpuhkan musuh dengan rentetan serangan mematikan.", 
+    hitDie: 8, isCaster: false, primary: "DEX", saves: ["STR", "DEX"], 
+    proficiencies: { armor: "None", weapons: "Simple Weapons, Shortswords", tools: "One type of artisan's tools or musical instrument" }, 
+    skillCount: 2, skillOptions: ["Acrobatics", "Athletics", "History", "Insight", "Religion", "Stealth"], 
+    equipmentChoices: [{ id: "weapon", options: ["A shortsword", "Any simple weapon"] }, { id: "pack", options: ["A dungeoneer's pack", "An explorer's pack"] }], 
+    baseEquipment: ["10 darts"],
+    features: [
+      { name: "Unarmored Defense", level: "1st level", desc: "Tanpa armor, AC Anda adalah 10 + DEX + WIS." },
+      { name: "Martial Arts", level: "1st level", desc: "Serangan unarmed Anda lebih mematikan dan bisa menggunakan DEX." }
+    ]
+  },
+  Paladin: { 
+    image: "https://www.dndbeyond.com/avatars/43940/832/638607458605123169.jpeg?width=1000&height=1000&fit=bounds&quality=95&auto=webp", 
+    icon: "🛡️", color: "from-yellow-500 to-yellow-700", 
+    desc: "Kesatria suci yang kekuatannya bersumber dari sumpah dan keyakinan absolut. Paladin memadukan keterampilan bela diri baja dengan sihir cahaya mematikan (Divine Smite) untuk mengenyahkan kejahatan mutlak, sekaligus menjadi tameng hidup bagi mereka yang tak berdaya.", 
+    hitDie: 10, isCaster: true, primary: "STR", saves: ["WIS", "CHA"], 
+    proficiencies: { armor: "All Armor, Shields", weapons: "Simple Weapons, Martial Weapons", tools: "None" }, 
+    skillCount: 2, skillOptions: ["Athletics", "Insight", "Intimidation", "Medicine", "Persuasion", "Religion"], 
+    cantripsKnown: 0, spellsKnown: 0, 
+    equipmentChoices: [{ id: "weapon1", options: ["A martial weapon and a shield", "Two martial weapons"] }, { id: "weapon2", options: ["Five javelins", "Any simple melee weapon"] }, { id: "pack", options: ["A priest's pack", "An explorer's pack"] }], 
+    baseEquipment: ["Chain mail", "A holy symbol"],
+    spellcasting: { cantrips: 0, spellsKnown: 0, slots: 0 },
+    features: [
+      { name: "Divine Sense", level: "1st level", desc: "Mendeteksi keberadaan mahluk suci, iblis, atau undead di sekitar." },
+      { name: "Lay on Hands", level: "1st level", desc: "Kolam energi penyembuhan untuk memulihkan HP atau menyembuhkan penyakit." }
+    ]
+  },
+  Ranger: { 
+    image: "https://www.dndbeyond.com/avatars/43940/841/638607458994233790.jpeg?width=1000&height=1000&fit=bounds&quality=95&auto=webp", 
+    icon: "🏹", color: "from-emerald-700 to-green-900", 
+    desc: "Penjaga perbatasan yang berdiri di antara peradaban dan teror alam liar. Ranger adalah pengintai ahli, pemburu monster presisi tinggi, yang memanfaatkan kelicikan, keterampilan bersembunyi, dan sihir primitif untuk mengubah alam menjadi senjata mereka.", 
+    hitDie: 10, isCaster: true, primary: "DEX", saves: ["STR", "DEX"], 
+    proficiencies: { armor: "Light Armor, Medium Armor, Shields", weapons: "Simple Weapons, Martial Weapons", tools: "None" }, 
+    skillCount: 3, skillOptions: ["Animal Handling", "Athletics", "Insight", "Investigation", "Nature", "Perception", "Stealth", "Survival"], 
+    cantripsKnown: 0, spellsKnown: 0, 
+    equipmentChoices: [{ id: "armor", options: ["Scale mail", "Leather armor"] }, { id: "weapon1", options: ["Two shortswords", "Two simple melee weapons"] }, { id: "pack", options: ["A dungeoneer's pack", "An explorer's pack"] }], 
+    baseEquipment: ["A longbow and a quiver of 20 arrows"],
+    spellcasting: { cantrips: 0, spellsKnown: 0, slots: 0 },
+    features: [
+      { name: "Favored Enemy", level: "1st level", desc: "Keuntungan melacak dan mengingat info tentang musuh spesifik." },
+      { name: "Natural Explorer", level: "1st level", desc: "Sangat ahli dalam navigasi dan bertahan hidup di lingkungan favorit Anda." }
+    ]
+  },
+  Rogue: { 
+    image: "https://www.dndbeyond.com/avatars/43940/853/638607459373183811.jpeg?width=1000&height=1000&fit=bounds&quality=95&auto=webp", 
+    icon: "🗡️", color: "from-zinc-800 to-zinc-950", 
+    desc: "Bayangan mematikan yang mengandalkan keahlian siluman dan serangan mematikan pada titik lemah (Sneak Attack). Rogue bukan petarung garis depan, melainkan pakar membongkar kunci, melucuti perangkap, dan membunuh target sebelum mereka menyadari bahaya datang.", 
+    hitDie: 8, isCaster: false, primary: "DEX", saves: ["DEX", "INT"], 
+    proficiencies: { armor: "Light Armor", weapons: "Simple Weapons, Hand Crossbows, Longswords, Rapiers, Shortswords", tools: "Thieves' tools" }, 
+    skillCount: 4, skillOptions: ["Acrobatics", "Athletics", "Deception", "Insight", "Intimidation", "Investigation", "Perception", "Performance", "Persuasion", "Sleight of Hand", "Stealth"], 
+    equipmentChoices: [{ id: "weapon1", options: ["A rapier", "A shortsword"] }, { id: "weapon2", options: ["A shortbow and quiver of 20 arrows", "A shortsword"] }, { id: "pack", options: ["A burglar's pack", "A dungeoneer's pack", "An explorer's pack"] }], 
+    baseEquipment: ["Leather armor", "Two daggers", "Thieves' tools"],
+    features: [
+      { name: "Expertise", level: "1st level", desc: "Pilih dua skill. Bonus profisiensi Anda digandakan untuk skill tersebut." },
+      { name: "Sneak Attack", level: "1st level", desc: "Ekstra 1d6 damage jika memiliki keuntungan serangan (Advantage)." },
+      { name: "Thieves' Cant", level: "1st level", desc: "Memahami bahasa sandi dan simbol rahasia para kriminal." }
+    ]
+  },
+  Sorcerer: { 
+    image: "https://www.dndbeyond.com/avatars/43940/871/638607459719752506.jpeg?width=1000&height=1000&fit=bounds&quality=95&auto=webp", 
+    icon: "✨", color: "from-red-600 to-rose-800", 
+    desc: "Mistikus yang memancarkan sihir dari dalam darah mereka sendiri, berkat garis keturunan eksotis, kutukan mistis, atau anomali kosmis. Sorcerer dapat memanipulasi hukum realitas secara langsung (Metamagic) tanpa perlu mempelajari buku sihir tebal.", 
+    hitDie: 6, isCaster: true, primary: "CHA", saves: ["CON", "CHA"], 
+    proficiencies: { armor: "None", weapons: "Daggers, Darts, Slings, Quarterstaffs, Light Crossbows", tools: "None" }, 
+    skillCount: 2, skillOptions: ["Arcana", "Deception", "Insight", "Intimidation", "Persuasion", "Religion"], 
+    cantripsKnown: 4, spellsKnown: 2, 
+    equipmentChoices: [{ id: "weapon", options: ["A light crossbow and 20 bolts", "Any simple weapon"] }, { id: "focus", options: ["A component pouch", "An arcane focus"] }, { id: "pack", options: ["A dungeoneer's pack", "An explorer's pack"] }], 
+    baseEquipment: ["Two daggers"],
+    spellcasting: { cantrips: 4, spellsKnown: 2, slots: 2 },
+    features: [
+      { name: "Spellcasting", level: "1st level", desc: "Kekuatan magis meledak dari garis keturunan Anda." },
+      { name: "Sorcerous Origin", level: "1st level", desc: "Pilih sumber sihir Anda (mis. Draconic, Wild Magic) yang memberi fitur awal." }
+    ]
+  },
+  Warlock: { 
+    image: "https://www.dndbeyond.com/avatars/43940/890/638607460049450769.jpeg?width=1000&height=1000&fit=bounds&quality=95&auto=webp", 
+    icon: "👁️", color: "from-fuchsia-800 to-purple-950", 
+    desc: "Perapal mantra gelap yang mengikat perjanjian jiwa dengan entitas kuno penguasa kosmos (Iblis, Archfey, atau Dewa Kosmis). Sebagai bayaran atas rahasia terlarang (Eldritch Invocations), mereka melepaskan energi magis yang destruktif dan tak bisa dipahami nalar.", 
+    hitDie: 8, isCaster: true, primary: "CHA", saves: ["WIS", "CHA"], 
+    proficiencies: { armor: "Light Armor", weapons: "Simple Weapons", tools: "None" }, 
+    skillCount: 2, skillOptions: ["Arcana", "Deception", "History", "Intimidation", "Investigation", "Nature", "Religion"], 
+    cantripsKnown: 2, spellsKnown: 2, 
+    equipmentChoices: [{ id: "weapon", options: ["A light crossbow and 20 bolts", "Any simple weapon"] }, { id: "focus", options: ["A component pouch", "An arcane focus"] }, { id: "pack", options: ["A scholar's pack", "An dungeoneer's pack"] }], 
+    baseEquipment: ["Leather armor", "Any simple weapon", "Two daggers"],
+    spellcasting: { cantrips: 2, spellsKnown: 2, slots: 1 },
+    features: [
+      { name: "Otherworldly Patron", level: "1st level", desc: "Entitas mistis yang memberikan Anda kemampuan magis spesifik." },
+      { name: "Pact Magic", level: "1st level", desc: "Sihir Warlock selalu dikerahkan pada level tertinggi dan pulih saat istirahat singkat." }
+    ]
+  },
+  Wizard: { 
+    image: "https://www.dndbeyond.com/avatars/43940/902/638607460390730233.jpeg?width=1000&height=1000&fit=bounds&quality=95&auto=webp", 
+    icon: "📖", color: "from-blue-700 to-indigo-900", 
+    desc: "Sarjana magis paling intelektual yang merangkai realitas melalui rumus matematika kosmis di dalam buku sihir mereka. Dengan waktu dan persiapan, Wizard memiliki spektrum sihir paling mematikan dan luas di seluruh dimensi, dari ledakan elemen hingga manipulasi gravitasi.", 
+    hitDie: 6, isCaster: true, primary: "INT", saves: ["INT", "WIS"], 
+    proficiencies: { armor: "None", weapons: "Daggers, Darts, Slings, Quarterstaffs, Light Crossbows", tools: "None" }, 
+    skillCount: 2, skillOptions: ["Arcana", "History", "Insight", "Investigation", "Medicine", "Religion"], 
+    cantripsKnown: 3, spellsKnown: 6, 
+    equipmentChoices: [{ id: "weapon", options: ["A quarterstaff", "A dagger"] }, { id: "focus", options: ["A component pouch", "An arcane focus"] }, { id: "pack", options: ["A scholar's pack", "An explorer's pack"] }], 
+    baseEquipment: ["A spellbook"],
+    spellcasting: { cantrips: 3, spellsKnown: "6 in Spellbook", slots: 2 },
+    features: [
+      { name: "Spellcasting", level: "1st level", desc: "Anda menggunakan buku sihir tebal untuk menyiapkan mantra harian." },
+      { name: "Arcane Recovery", level: "1st level", desc: "Memulihkan sebagian Spell Slots saat Anda melakukan istirahat singkat (Short Rest)." }
+    ]
+  },
 };
 
-export const SUBCLASSES: Record<string, {name: string, desc: string}[]> = {
+export const SUBCLASSES: Record<string, {name: string, desc: string, bonuses?: string[]}[]> = {
   Barbarian: [
-    {name: "Path of the Berserker", desc: "Mampu masuk ke dalam Frenzy. Mereka mengabaikan rasa sakit dan batasan fisik demi mendaratkan rentetan serangan mematikan yang tak bisa ditangkis."}, 
-    {name: "Path of the Totem Warrior", desc: "Menerima bimbingan pelindung gaib. Roh Beruang memberi ketahanan absolut, Elang menajamkan penglihatan, dan Serigala menginspirasi kawan."}
+    {name: "Path of the Berserker", desc: "Mampu masuk ke dalam Frenzy. Mereka mengabaikan rasa sakit dan batasan fisik demi mendaratkan rentetan serangan mematikan yang tak bisa ditangkis.", bonuses: ["Frenzy (Bonus Action Attack)", "Mindless Rage (Immune to Charm/Frighten)"]}, 
+    {name: "Path of the Totem Warrior", desc: "Menerima bimbingan pelindung gaib. Roh Beruang memberi ketahanan absolut, Elang menajamkan penglihatan, dan Serigala menginspirasi kawan.", bonuses: ["Spirit Seeker (Speak with Animals)", "Totem Spirit (Resistance/Mobility/Tactics)"]}
   ],
   Bard: [
-    {name: "College of Lore", desc: "Pengumpul rahasia magis purba yang menggunakan pengetahuannya untuk mencela musuh dengan kata-kata magis yang melemahkan mental mereka."}, 
-    {name: "College of Valor", desc: "Skald heroik yang terjun ke garis depan dengan pedang, menyanyikan kidung perang untuk membakar semangat tempur kawan-kawannya."}
+    {name: "College of Lore", desc: "Pengumpul rahasia magis purba yang menggunakan pengetahuannya untuk mencela musuh dengan kata-kata magis yang melemahkan mental mereka.", bonuses: ["Bonus Proficiencies (3 Skills Any)", "Cutting Words (Reduce Enemy Rolls)"]}, 
+    {name: "College of Valor", desc: "Skald heroik yang terjun ke garis depan dengan pedang, menyanyikan kidung perang untuk membakar semangat tempur kawan-kawannya.", bonuses: ["Bonus Proficiencies (Medium Armor, Shields, Martial Wpns)", "Combat Inspiration"]}
   ],
   Cleric: [
-    {name: "Knowledge Domain", desc: "Membaktikan diri pada pencarian ilmu pengetahuan, masa lalu, dan rahasia kosmis melalui berkah dewa kebijaksanaan."},
-    {name: "Life Domain", desc: "Ahli sihir penyembuhan paling murni. Mereka merepresentasikan energi positif absolut yang melindungi sekutu dari ambang kematian."}, 
-    {name: "Light Domain", desc: "Pelayan dewa matahari yang memanipulasi kekuatan api dan cahaya menyilaukan untuk membakar musuh-musuh dan para penyembah kegelapan."},
-    {name: "Nature Domain", desc: "Pelayan dewa alam liar yang memiliki kemampuan memanipulasi elemen hewan dan tumbuhan untuk melindungi ciptaan alami."},
-    {name: "Tempest Domain", desc: "Membawa amarah badai, petir, dan guruh ke medan tempur. Mereka adalah perwujudan badai yang tak tertahankan."},
-    {name: "Trickery Domain", desc: "Pendeta penipu yang menggunakan sihir ilusi dan siluman. Memuja dewa-dewa kekacauan, penipuan, atau pencurian."},
-    {name: "War Domain", desc: "Pendeta tempur berbaju zirah pelat tebal yang diberkati kemampuan menyerang berkali-kali atas nama dewa peperangan suci."}
+    {name: "Knowledge Domain", desc: "Membaktikan diri pada pencarian ilmu pengetahuan, masa lalu, dan rahasia kosmis melalui berkah dewa kebijaksanaan.", bonuses: ["Domain Spells (Command, Identify)", "Blessings of Knowledge (2 Languages, 2 Skills)"]},
+    {name: "Life Domain", desc: "Ahli sihir penyembuhan paling murni. Mereka merepresentasikan energi positif absolut yang melindungi sekutu dari ambang kematian.", bonuses: ["Domain Spells (Bless, Cure Wounds)", "Bonus Proficiency (Heavy Armor)", "Disciple of Life (+Healing)"]}, 
+    {name: "Light Domain", desc: "Pelayan dewa matahari yang memanipulasi kekuatan api dan cahaya menyilaukan untuk membakar musuh-musuh dan para penyembah kegelapan.", bonuses: ["Domain Spells (Burning Hands, Faerie Fire)", "Bonus Cantrip (Light)", "Warding Flare (Impose Disadvantage)"]},
+    {name: "Nature Domain", desc: "Pelayan dewa alam liar yang memiliki kemampuan memanipulasi elemen hewan dan tumbuhan untuk melindungi ciptaan alami.", bonuses: ["Domain Spells (Animal Friendship, Speak with Animals)", "Acolyte of Nature (Druid Cantrip, Skill)"]},
+    {name: "Tempest Domain", desc: "Membawa amarah badai, petir, dan guruh ke medan tempur. Mereka adalah perwujudan badai yang tak tertahankan.", bonuses: ["Domain Spells (Fog Cloud, Thunderwave)", "Bonus Proficiencies (Martial Wpns, Heavy Armor)", "Wrath of the Storm (Retaliation Damage)"]},
+    {name: "Trickery Domain", desc: "Pendeta penipu yang menggunakan sihir ilusi dan siluman. Memuja dewa-dewa kekacauan, penipuan, atau pencurian.", bonuses: ["Domain Spells (Charm Person, Disguise Self)", "Blessing of the Trickster (Advantage on Stealth)"]},
+    {name: "War Domain", desc: "Pendeta tempur berbaju zirah pelat tebal yang diberkati kemampuan menyerang berkali-kali atas nama dewa peperangan suci.", bonuses: ["Domain Spells (Divine Favor, Shield of Faith)", "Bonus Proficiencies (Heavy Armor, Martial Wpns)", "War Priest (Bonus Attack)"]}
   ],
   Druid: [
-    {name: "Circle of the Land", desc: "Mistikus yang terikat kuat dengan magis spesifik dari topografi asal mereka, memberikan akses ke berbagai mantra rahasia alam yang kuat."}, 
-    {name: "Circle of the Moon", desc: "Pelindung keganasan liar yang memfokuskan sihir mereka sepenuhnya pada seni perubahan wujud (Wild Shape) menjadi monster karnivora buas."}
+    {name: "Circle of the Land", desc: "Mistikus yang terikat kuat dengan magis spesifik dari topografi asal mereka, memberikan akses ke berbagai mantra rahasia alam yang kuat.", bonuses: ["Bonus Cantrip", "Natural Recovery (Restore Spell Slots)"]}, 
+    {name: "Circle of the Moon", desc: "Pelindung keganasan liar yang memfokuskan sihir mereka sepenuhnya pada seni perubahan wujud (Wild Shape) menjadi monster karnivora buas.", bonuses: ["Combat Wild Shape (Bonus Action)", "Circle Forms (Higher CR Beasts)"]}
   ],
   Fighter: [
-    {name: "Champion", desc: "Perwujudan dari kekuatan mentah dan kesempurnaan fisik. Mereka mendominasi musuh dengan serangan kritikal (Critical Hit) yang mematikan dan presisi tinggi."}, 
-    {name: "Battle Master", desc: "Jenius taktis dan komandan veteran yang menggunakan berbagai 'Manuver Tempur' khusus untuk melucuti senjata, menjatuhkan, atau mengecoh musuh."},
-    {name: "Eldritch Knight", desc: "Prajurit elitis yang memadukan ilmu pedang tingkat tinggi dengan sihir elemen mematikan (Evokasi) dan tameng pelindung gaib (Abjurasi)."}
+    {name: "Champion", desc: "Perwujudan dari kekuatan mentah dan kesempurnaan fisik. Mereka mendominasi musuh dengan serangan kritikal (Critical Hit) yang mematikan dan presisi tinggi.", bonuses: ["Improved Critical (Crit on 19 or 20)"]}, 
+    {name: "Battle Master", desc: "Jenius taktis dan komandan veteran yang menggunakan berbagai 'Manuver Tempur' khusus untuk melucuti senjata, menjatuhkan, atau mengecoh musuh.", bonuses: ["Combat Superiority (3 Maneuvers)", "Student of War (Artisan's Tools)"]},
+    {name: "Eldritch Knight", desc: "Prajurit elitis yang memadukan ilmu pedang tingkat tinggi dengan sihir elemen mematikan (Evokasi) dan tameng pelindung gaib (Abjurasi).", bonuses: ["Spellcasting (Wizard Spells)", "Weapon Bond (Summon Weapon)"]}
   ],
   Monk: [
-    {name: "Way of the Open Hand", desc: "Master pertarungan tangan kosong. Mereka dapat memanipulasi titik Ki di tubuh musuh untuk melempar, memukul mundur, atau menghancurkan organ vital musuh seketika."}, 
-    {name: "Way of Shadow", desc: "Kultus pembunuh rahasia yang memanfaatkan energi gelap untuk berteleportasi dari satu bayangan ke bayangan lain, menyergap korban tanpa suara."},
-    {name: "Way of the Four Elements", desc: "Biksu mistis yang mampu menyalurkan Ki mereka untuk memanipulasi elemen dasar (Api, Air, Bumi, Angin) di alam semesta."}
+    {name: "Way of the Open Hand", desc: "Master pertarungan tangan kosong. Mereka dapat memanipulasi titik Ki di tubuh musuh untuk melempar, memukul mundur, atau menghancurkan organ vital musuh seketika.", bonuses: ["Open Hand Technique (Knockdown/Push/Stagger)"]}, 
+    {name: "Way of Shadow", desc: "Kultus pembunuh rahasia yang memanfaatkan energi gelap untuk berteleportasi dari satu bayangan ke bayangan lain, menyergap korban tanpa suara.", bonuses: ["Shadow Arts (Minor Illusion, Pass Without Trace, Darkness, Silence)"]},
+    {name: "Way of the Four Elements", desc: "Biksu mistis yang mampu menyalurkan Ki mereka untuk memanipulasi elemen dasar (Api, Air, Bumi, Angin) di alam semesta.", bonuses: ["Disciple of the Elements (Elemental Disciplines)"]}
   ],
   Paladin: [
-    {name: "Oath of Devotion", desc: "Kesatria ideal yang mengikat sumpah pada kejujuran dan kehormatan. Pedang mereka bersinar dengan cahaya suci yang mengusir setan dan iblis kembali ke asalnya."}, 
-    {name: "Oath of the Ancients", desc: "Kesatria hijau yang bersumpah melestarikan keindahan alam. Mereka kebal terhadap pengaruh fey dan sihir gelap demi menjaga cahaya kosmis."},
-    {name: "Oath of Vengeance", desc: "Malaikat maut yang mengikat sumpah darah. Mereka mengabaikan belas kasih demi memburu dan memusnahkan pendosa besar tanpa henti dan tanpa ampun."}
+    {name: "Oath of Devotion", desc: "Kesatria ideal yang mengikat sumpah pada kejujuran dan kehormatan. Pedang mereka bersinar dengan cahaya suci yang mengusir setan dan iblis kembali ke asalnya.", bonuses: ["Oath Spells (Protection from Evil, Sanctuary)", "Channel Divinity (Sacred Weapon, Turn the Unholy)"]}, 
+    {name: "Oath of the Ancients", desc: "Kesatria hijau yang bersumpah melestarikan keindahan alam. Mereka kebal terhadap pengaruh fey dan sihir gelap demi menjaga cahaya kosmis.", bonuses: ["Oath Spells (Ensnaring Strike, Speak with Animals)", "Channel Divinity (Nature's Wrath, Turn the Faithless)"]},
+    {name: "Oath of Vengeance", desc: "Malaikat maut yang mengikat sumpah darah. Mereka mengabaikan belas kasih demi memburu dan memusnahkan pendosa besar tanpa henti dan tanpa ampun.", bonuses: ["Oath Spells (Bane, Hunter's Mark)", "Channel Divinity (Abjure Enemy, Vow of Enmity)"]}
   ],
   Ranger: [
-    {name: "Hunter", desc: "Ahli taktik yang memfokuskan diri untuk membunuh tipe monster spesifik, baik itu membantai kerumunan Orc liar atau merobohkan Raksasa seorang diri."}, 
-    {name: "Beast Master", desc: "Membentuk ikatan telepati magis dengan seekor hewan buas (seperti serigala atau elang) yang bertarung berdampingan di medan pertempuran mematikan."}
+    {name: "Hunter", desc: "Ahli taktik yang memfokuskan diri untuk membunuh tipe monster spesifik, baik itu membantai kerumunan Orc liar atau merobohkan Raksasa seorang diri.", bonuses: ["Hunter's Prey (Colossus Slayer / Giant Killer / Horde Breaker)"]}, 
+    {name: "Beast Master", desc: "Membentuk ikatan telepati magis dengan seekor hewan buas (seperti serigala atau elang) yang bertarung berdampingan di medan pertempuran mematikan.", bonuses: ["Ranger's Companion (Beast Pet)"]}
   ],
   Rogue: [
-    {name: "Thief", desc: "Pencuri jalanan dengan kelincahan super. Mereka memanjat dinding bagai laba-laba, bereaksi sangat cepat, dan dapat menggunakan artefak sihir tanpa batasannya."}, 
-    {name: "Assassin", desc: "Ekskutor profesional berdarah dingin. Ahli menyamar, meracik racun, dan memberikan serangan kritikal instan kepada target yang tidak menyadari kehadiran mereka."},
-    {name: "Arcane Trickster", desc: "Pencuri yang memberdayakan kelicikan mereka dengan sihir ilusi dan pesona. Tangan gaib (Mage Hand) mereka bisa mencuri benda dari kantong Anda tanpa terlihat."}
+    {name: "Thief", desc: "Pencuri jalanan dengan kelincahan super. Mereka memanjat dinding bagai laba-laba, bereaksi sangat cepat, dan dapat menggunakan artefak sihir tanpa batasannya.", bonuses: ["Fast Hands (Bonus Action Item Use)", "Second-Story Work (Climbing Speed)"]}, 
+    {name: "Assassin", desc: "Ekskutor profesional berdarah dingin. Ahli menyamar, meracik racun, dan memberikan serangan kritikal instan kepada target yang tidak menyadari kehadiran mereka.", bonuses: ["Bonus Proficiencies (Disguise Kit, Poisoner's Kit)", "Assassinate (Advantage & Crit on Surprised)"]},
+    {name: "Arcane Trickster", desc: "Pencuri yang memberdayakan kelicikan mereka dengan sihir ilusi dan pesona. Tangan gaib (Mage Hand) mereka bisa mencuri benda dari kantong Anda tanpa terlihat.", bonuses: ["Spellcasting (Wizard Spells)", "Mage Hand Legerdemain (Invisible Hand)"]}
   ],
   Sorcerer: [
-    {name: "Draconic Bloodline", desc: "Sihir dari warisan naga kuno. Tumbuh sisik tak terlihat yang melindungi fisik mereka, dan mantra elemen mereka mewarisi keganasan warna naga leluhur mereka."}, 
-    {name: "Wild Magic", desc: "Sihirnya berasal dari kekacauan multiverse. Setiap kali merapal mantra mistis, anomali magis acak bisa terjadi—entah itu ledakan hebat, atau mengubah diri sendiri menjadi domba."}
+    {name: "Draconic Bloodline", desc: "Sihir dari warisan naga kuno. Tumbuh sisik tak terlihat yang melindungi fisik mereka, dan mantra elemen mereka mewarisi keganasan warna naga leluhur mereka.", bonuses: ["Dragon Ancestor (Element Affinity)", "Draconic Resilience (+1 HP/Lvl, 13+DEX AC)"]}, 
+    {name: "Wild Magic", desc: "Sihirnya berasal dari kekacauan multiverse. Setiap kali merapal mantra mistis, anomali magis acak bisa terjadi—entah itu ledakan hebat, atau mengubah diri sendiri menjadi domba.", bonuses: ["Wild Magic Surge (Random Magic Effects)", "Tides of Chaos (Advantage for a Surge)"]}
   ],
   Warlock: [
-    {name: "The Archfey", desc: "Kekuatan hasil pakta dengan penguasa ras peri. Mereka spesialis memanipulasi emosi, menciptakan ilusi menakutkan, dan mengendalikan pikiran mahluk hidup dengan paksa."},
-    {name: "The Fiend", desc: "Kekuatan hasil pakta dengan entitas neraka terdalam. Mereka ahli memanggil lautan api neraka, dan meregenerasi kekuatan setiap kali mengorbankan nyawa lawan."}, 
-    {name: "The Great Old One", desc: "Kekuatan hasil pakta dengan entitas kosmis kuno tak bernama. Mereka bisa berkomunikasi secara telepati dan menggunakan sihir yang menghancurkan kewarasan pikiran musuh."}
+    {name: "The Archfey", desc: "Kekuatan hasil pakta dengan penguasa ras peri. Mereka spesialis memanipulasi emosi, menciptakan ilusi menakutkan, dan mengendalikan pikiran mahluk hidup dengan paksa.", bonuses: ["Expanded Spell List (Faerie Fire, Sleep)", "Fey Presence (Charm/Frighten AoE)"]},
+    {name: "The Fiend", desc: "Kekuatan hasil pakta dengan entitas neraka terdalam. Mereka ahli memanggil lautan api neraka, dan meregenerasi kekuatan setiap kali mengorbankan nyawa lawan.", bonuses: ["Expanded Spell List (Burning Hands, Command)", "Dark One's Blessing (Temp HP on Kill)"]}, 
+    {name: "The Great Old One", desc: "Kekuatan hasil pakta dengan entitas kosmis kuno tak bernama. Mereka bisa berkomunikasi secara telepati dan menggunakan sihir yang menghancurkan kewarasan pikiran musuh.", bonuses: ["Expanded Spell List (Dissonant Whispers, Tasha's Laughter)", "Awakened Mind (Telepathy 30ft)"]}
   ],
   Wizard: [
-    {name: "School of Abjuration", desc: "Pelindung mutlak. Mereka menciptakan perisai mistis yang menyerap serangan, menolak sihir musuh, dan menghalau entitas sihir masuk."},
-    {name: "School of Conjuration", desc: "Spesialisasi menembus dimensi ruang untuk memanggil makhluk hidup, energi ajaib, dan objek fisik murni dari ketiadaan absolut."},
-    {name: "School of Divination", desc: "Bisa melihat jalinan masa depan, masa lalu, dan rahasia yang paling tersembunyi. Ahli sihir ramalan bisa memanipulasi guliran dadu takdir."},
-    {name: "School of Enchantment", desc: "Spesialisasi memanipulasi pikiran, ingatan, dan emosi makhluk hidup, membengkokkan kehendak mereka menjadi boneka penurut."},
-    {name: "School of Evocation", desc: "Ahli merakit ledakan murni seperti Fireball atau Lightning Bolt. Mereka bahkan bisa melindungi kawan dari jangkauan efek ledakan sihir destruktif mereka sendiri."}, 
-    {name: "School of Illusion", desc: "Spesialisasi menipu indera dan pikiran manusia dengan ilusi visual serta suara yang luar biasa realistis, memutarbalikkan realita target."},
-    {name: "School of Necromancy", desc: "Spesialisasi memanipulasi energi kehidupan kosmis dan merangkul kematian, menghisap nyawa dan membangkitkan pasukan mayat hidup."},
-    {name: "School of Transmutation", desc: "Spesialisasi mengubah energi dan materi benda fisik dari satu wujud ke wujud lain. Seperti mengubah besi menjadi perak murni."}
+    {name: "School of Abjuration", desc: "Pelindung mutlak. Mereka menciptakan perisai mistis yang menyerap serangan, menolak sihir musuh, dan menghalau entitas sihir masuk.", bonuses: ["Abjuration Savant (Half Cost)", "Arcane Ward (Magical HP Shield)"]},
+    {name: "School of Conjuration", desc: "Spesialisasi menembus dimensi ruang untuk memanggil makhluk hidup, energi ajaib, dan objek fisik murni dari ketiadaan absolut.", bonuses: ["Conjuration Savant (Half Cost)", "Minor Conjuration (Create Small Objects)"]},
+    {name: "School of Divination", desc: "Bisa melihat jalinan masa depan, masa lalu, dan rahasia yang paling tersembunyi. Ahli sihir ramalan bisa memanipulasi guliran dadu takdir.", bonuses: ["Divination Savant (Half Cost)", "Portent (Store 2 d20 Rolls)"]},
+    {name: "School of Enchantment", desc: "Spesialisasi memanipulasi pikiran, ingatan, dan emosi makhluk hidup, membengkokkan kehendak mereka menjadi boneka penurut.", bonuses: ["Enchantment Savant (Half Cost)", "Hypnotic Gaze (Charm/Incapacitate target)"]},
+    {name: "School of Evocation", desc: "Ahli merakit ledakan murni seperti Fireball atau Lightning Bolt. Mereka bahkan bisa melindungi kawan dari jangkauan efek ledakan sihir destruktif mereka sendiri.", bonuses: ["Evocation Savant (Half Cost)", "Sculpt Spells (Protect Allies from AoE)"]}, 
+    {name: "School of Illusion", desc: "Spesialisasi menipu indera dan pikiran manusia dengan ilusi visual serta suara yang luar biasa realistis, memutarbalikkan realita target.", bonuses: ["Illusion Savant (Half Cost)", "Improved Minor Illusion (Both Sound & Image)"]},
+    {name: "School of Necromancy", desc: "Spesialisasi memanipulasi energi kehidupan kosmis dan merangkul kematian, menghisap nyawa dan membangkitkan pasukan mayat hidup.", bonuses: ["Necromancy Savant (Half Cost)", "Grim Harvest (Heal on Kill)"]},
+    {name: "School of Transmutation", desc: "Spesialisasi mengubah energi dan materi benda fisik dari satu wujud ke wujud lain. Seperti mengubah besi menjadi perak murni.", bonuses: ["Transmutation Savant (Half Cost)", "Minor Alchemy (Alter Physical Materials)"]}
   ],
 };
 
