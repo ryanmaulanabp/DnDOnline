@@ -5,7 +5,9 @@ import { connectDB } from "@/lib/mongodb";
 import Character from "@/models/Character";
 
 export interface CharacterPayload {
+  userEmail: string; // <-- Identifikasi kepemilikan karakter
   name: string; race: string; class: string; alignment: string; background: string;
+  avatarUrl?: string; // <-- Tambahan opsional untuk avatar
   level: number; hpMax: number; currentHp: number; armorClass: number; speed: number;
   initiative: number; stats: { STR: number; DEX: number; CON: number; INT: number; WIS: number; CHA: number; };
   proficientSkills: string[]; equipment: string[]; spells: string[]; features: string[];
@@ -22,11 +24,22 @@ export async function getCharacterById(id: string) {
     const character = await Character.findById(id).lean();
     if (!character) return null;
     
-    // Konversi _id ke string agar Next.js tidak komplain
     return JSON.parse(JSON.stringify(character));
   } catch (error) {
     console.error("Gagal mengambil data karakter:", error);
     return null;
+  }
+}
+
+// --- FUNGSI AMBIL DATA BERDASARKAN AKUN (EMAIL) ---
+export async function getCharactersByUserAction(email: string) {
+  try {
+    await connectDB();
+    const characters = await Character.find({ userEmail: email }).lean();
+    return JSON.parse(JSON.stringify(characters));
+  } catch (error) {
+    console.error("Gagal mengambil data karakter player:", error);
+    return [];
   }
 }
 
@@ -49,6 +62,21 @@ export async function updateCharacterHpAction(id: string, newHp: number) {
     await connectDB();
     await Character.findByIdAndUpdate(id, { currentHp: newHp });
     revalidatePath(`/characters/${id}`);
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+// --- FUNGSI UPDATE AVATAR ---
+export async function updateCharacterAvatarAction(id: string, newAvatarUrl: string) {
+  try {
+    await connectDB();
+    // Tambahkan { strict: false } agar Mongoose tetap menyimpannya meskipun
+    // Anda lupa menambahkan 'avatarUrl' ke dalam models/Character.ts
+    await Character.findByIdAndUpdate(id, { avatarUrl: newAvatarUrl }, { strict: false });
+    revalidatePath(`/characters/${id}`);
+    revalidatePath("/"); // Memaksa refresh cache untuk menu utama
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -90,6 +118,18 @@ export async function updateConditionsAction(id: string, conditions: string[]) {
     await connectDB();
     await Character.findByIdAndUpdate(id, { conditions });
     revalidatePath(`/characters/${id}`);
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+// --- FUNGSI HAPUS KARAKTER ---
+export async function deleteCharacterAction(id: string) {
+  try {
+    await connectDB();
+    await Character.findByIdAndDelete(id);
+    revalidatePath("/");
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };

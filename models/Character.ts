@@ -9,6 +9,7 @@ export interface IWeapon {
 }
 
 export interface ICharacter extends Document {
+  userEmail: string; // <-- Menghubungkan karakter dengan akun pemain
   name: string;
   race: string;
   class: string;
@@ -67,6 +68,7 @@ const WeaponSchema = new Schema<IWeapon>({
 
 const CharacterSchema = new Schema<ICharacter>(
   {
+    userEmail: { type: String, required: true }, // <-- Wajib diisi saat menyimpan
     name: { type: String, required: true },
     race: { type: String, required: true },
     class: { type: String, required: true },
