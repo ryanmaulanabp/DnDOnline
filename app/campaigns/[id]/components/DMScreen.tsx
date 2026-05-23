@@ -84,6 +84,8 @@ export function DMScreen({ campaignId, characters }: { campaignId: string, chara
         </div>
       </div>
       
+      </div>
+      
       {/* Generated Modal */}
       <AnimatePresence>
         {generatedResult && (

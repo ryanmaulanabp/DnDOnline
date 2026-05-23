@@ -14,7 +14,7 @@ const HERO_SLIDES = [
     subtitle: "The Weave Awaits Your Command",
     description: "Selami misteri sihir yang belum terpecahkan. Panduan komprehensif untuk para penyihir, warlock, dan sorcerer yang berani menyentuh inti dari Weave.",
     badge: "Arcane Expansion",
-    btnText: "BACA LORE",
+    btnText: "LIHAT HALL OF HEROES",
     btnLink: "/characters",
     bgImage: "/images/hero_arcane.png",
     mainTitle: "ARCANE SECRETS"

@@ -19,6 +19,11 @@ export interface ICampaign extends Document {
       initiative: number;
       hp: number;
       maxHp: number;
+      ac: number;
+      action: number;
+      bonusAction: number;
+      reaction: number;
+      speed: number;
       isMonster: boolean;
     }[];
   };
@@ -29,6 +34,7 @@ export interface ICampaign extends Document {
   audioState: string; // URL or ID of the audio track playing
   gridState: {
     bgUrl: string;
+    weather: string;
     tokens: { id: string; x: number; y: number; img: string; name: string; isMonster: boolean }[];
   };
   createdAt: Date;
@@ -61,6 +67,11 @@ const CampaignSchema = new Schema<ICampaign>(
         initiative: { type: Number, default: 0 },
         hp: { type: Number, default: 0 },
         maxHp: { type: Number, default: 0 },
+        ac: { type: Number, default: 10 },
+        action: { type: Number, default: 1 },
+        bonusAction: { type: Number, default: 1 },
+        reaction: { type: Number, default: 1 },
+        speed: { type: Number, default: 30 },
         isMonster: { type: Boolean, default: false }
       }]
     },
@@ -75,6 +86,7 @@ const CampaignSchema = new Schema<ICampaign>(
     audioState: { type: String, default: "none" },
     gridState: {
       bgUrl: { type: String, default: "" },
+      weather: { type: String, default: "none" },
       tokens: [{
         id: { type: String },
         x: { type: Number, default: 0 },

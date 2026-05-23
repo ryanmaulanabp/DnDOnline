@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { CLASSES } from "@/lib/dnd-data";
 import { deleteCharacterAction } from "@/app/actions/character";
+import { createSoloCampaignAction } from "@/app/actions/campaign";
 import { useRouter } from "next/navigation";
 import { Skull, Search, Sword, Dices, User, CandlestickChart, Armchair, Trash2, Shield, Heart, Zap, Sparkles, ChevronLeft, Crown, Flame } from "lucide-react";
 
@@ -26,6 +27,29 @@ export default function CharactersClient({ characters, user }: { characters: any
   const [searchQuery, setSearchQuery] = useState("");
   const [d20Result, setD20Result] = useState<number | null>(null);
   const [isRolling, setIsRolling] = useState(false);
+  const [startingId, setStartingId] = useState<string | null>(null);
+
+  const handlePlayNow = async (e: React.MouseEvent, charId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user?.email) {
+      alert("Silakan login untuk bermain!");
+      return;
+    }
+    setStartingId(charId);
+    try {
+      const res = await createSoloCampaignAction(user.email, charId);
+      if (res.success) {
+        router.push(`/campaigns/${res.campaignId}`);
+      } else {
+        alert(res.error || "Gagal memulai petualangan");
+      }
+    } catch (err) {
+      alert("Terjadi gangguan jaringan saat terhubung ke Weave.");
+    } finally {
+      setStartingId(null);
+    }
+  };
 
   const filteredChars = useMemo(() => {
     return characters.filter(c => 
@@ -210,7 +234,7 @@ export default function CharactersClient({ characters, user }: { characters: any
                             <img src={char.avatarUrl || CLASSES[char.class.split(' ')[0]]?.image} className="w-full h-full object-cover" alt="ava" crossOrigin="anonymous" style={{ filter: 'sepia(0.1)' }} />
                          </div>
                          <div className="flex flex-col items-end">
-                           <span className="bg-stone-900 text-stone-900 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest shadow-sm mb-1">Level {char.level}</span>
+                           <span className="bg-stone-900 text-amber-500 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest shadow-sm mb-1">Level {char.level}</span>
                            <span className="text-[8px] font-black text-stone-400 uppercase tracking-[0.2em]">{char.race}</span>
                          </div>
                        </div>
@@ -232,6 +256,16 @@ export default function CharactersClient({ characters, user }: { characters: any
                             </div>
                           ))}
                        </div>
+                       
+                       {/* Play Now Button */}
+                       <button
+                         onClick={(e) => handlePlayNow(e, char._id)}
+                         disabled={startingId === char._id}
+                         className="relative z-10 w-full mt-4 bg-gradient-to-r from-amber-700 to-amber-600 hover:from-amber-600 hover:to-amber-500 text-stone-900 font-black py-2.5 rounded-xl text-[9px] uppercase tracking-widest transition-all active:scale-[0.98] border border-amber-800 shadow-sm flex items-center justify-center gap-1.5"
+                       >
+                         <Sword className="w-3.5 h-3.5 text-stone-900" />
+                         {startingId === char._id ? "MASUK DUNGEON..." : "MAINKAN SEKARANG"}
+                       </button>
                     </div>
                   </Link>
 

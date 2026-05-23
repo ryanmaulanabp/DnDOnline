@@ -73,6 +73,7 @@ export default function CampaignsPage() {
       setIsJoinOpen(false);
       fetchData(session.user.email);
       setJoinData({ inviteCode: "", characterId: "" });
+      router.push(`/campaigns/${res.campaignId}`);
     } else {
       setErrorMsg(res.error || "Gagal bergabung ke campaign");
     }

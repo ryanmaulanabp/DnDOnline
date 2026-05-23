@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useCharacterStore } from "@/store/useCharacterStore";
 import { createCharacterAction, CharacterPayload } from "@/app/actions/character";
+import { createSoloCampaignAction } from "@/app/actions/campaign";
 import { CLASSES, RACES, BACKGROUNDS } from "@/lib/dnd-data";
 import { motion, AnimatePresence } from "framer-motion";
 import { toJpeg } from "html-to-image";
@@ -54,6 +55,7 @@ export default function FinalizeStep() {
   const [generatedId, setGeneratedId] = useState<string>("hero-id-1234");
   const [isCopied, setIsCopied] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isStartingGame, setIsStartingGame] = useState(false);
   
   const { data: session, status } = useSession();
   const store = useCharacterStore();
@@ -193,7 +195,26 @@ export default function FinalizeStep() {
 
   const handleFinish = () => {
     store.reset();
-    router.push("/");
+    router.push("/characters");
+  };
+
+  const handlePlayNow = async () => {
+    if (!session?.user?.email) return;
+    setIsStartingGame(true);
+    store.showToast("Mempersiapkan Dungeon Solo AI...", "success");
+    try {
+      const res = await createSoloCampaignAction(session.user.email, generatedId);
+      if (res.success) {
+        store.reset();
+        router.push(`/campaigns/${res.campaignId}`);
+      } else {
+        store.showToast(res.error || "Gagal masuk permainan", "error");
+      }
+    } catch (e) {
+      store.showToast("Terjadi gangguan saat terhubung ke Weave.", "error");
+    } finally {
+      setIsStartingGame(false);
+    }
   };
 
   return (
@@ -437,10 +458,23 @@ export default function FinalizeStep() {
             </button>
 
             <button 
+              onClick={handlePlayNow}
+              disabled={isStartingGame}
+              className="md:col-span-2 bg-gradient-to-r from-amber-700 via-amber-600 to-amber-500 hover:from-amber-600 hover:via-amber-500 hover:to-amber-400 text-stone-900 rounded-xl py-6 font-black uppercase tracking-[0.2em] transition-all active:scale-[0.98] flex items-center justify-center gap-4 group shadow-xl border border-amber-800 animate-pulse hover:animate-none"
+            >
+              {isStartingGame ? (
+                <RefreshCw className="w-6 h-6 animate-spin text-stone-900" />
+              ) : (
+                <Sword className="w-6 h-6 text-stone-900 group-hover:rotate-12 transition-transform" />
+              )}
+              <span className="text-sm font-black">{isStartingGame ? 'MEMBUKA PORTAL REALM...' : '⚔️ MAIN SEKARANG! (PLAY NOW)'}</span>
+            </button>
+
+            <button 
               onClick={handleFinish}
               className="md:col-span-2 mt-4 bg-transparent border-none text-stone-500 hover:text-stone-700 font-bold uppercase tracking-widest text-[10px] transition-colors py-4 flex items-center justify-center gap-2"
             >
-              <ArrowLeft className="w-4 h-4" /> Kembali ke Tavern (Home) & Mulai Petualangan
+              <ArrowLeft className="w-4 h-4" /> Buka Hall of Heroes (Daftar Karakter)
             </button>
           </motion.div>
         )}
