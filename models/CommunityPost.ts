@@ -11,4 +11,6 @@ const CommunityPostSchema = new Schema({
   color: { type: String, default: "amber" },
 }, { timestamps: true });
 
+CommunityPostSchema.index({ createdAt: -1 });
+
 export const CommunityPost = models.CommunityPost || model('CommunityPost', CommunityPostSchema);

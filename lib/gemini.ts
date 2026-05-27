@@ -108,7 +108,7 @@ export function parseGeminiMetadata(text: string): {
   customMap: string | null;
   weather: string | null;
 } {
-  const metaRegex = /<!--META:\s*(\{.*?\})\s*-->/s;
+  const metaRegex = /<!--META:\s*(\{[\s\S]*?\})\s*-->/;
   const match = text.match(metaRegex);
 
   let nextStage: string | null = null;
@@ -135,7 +135,7 @@ export function parseGeminiMetadata(text: string): {
   }
 
   // Remove the metadata tag from the display text
-  const cleanText = text.replace(/<!--META:.*?-->/s, "").trim();
+  const cleanText = text.replace(/<!--META:[\s\S]*?-->/, "").trim();
 
   return { cleanText, nextStage, hpDelta, goldDelta, triggerCombat, lootItem, customMap, weather };
 }

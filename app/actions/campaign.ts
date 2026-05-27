@@ -6,23 +6,80 @@ import Campaign from "@/models/Campaign";
 import Character from "@/models/Character";
 import { updateCharacterHpAction } from "./character";
 import { buildDMSystemPrompt, callGeminiDM, parseGeminiMetadata } from "@/lib/gemini";
-
+import { z } from "zod";
+import { 
+  CreateCampaignSchema, 
+  JoinCampaignSchema, 
+  ObjectIdSchema, 
+  SendMessageSchema, 
+  UpdateCombatStateSchema, 
+  AddSharedItemSchema, 
+  UpdateSharedGoldSchema, 
+  UpdateGridStateSchema, 
+  ClaimLootSchema 
+} from "@/lib/validations/schemas";
+import { getSessionUser } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 // Fungsi pembantu untuk mengenerate kode acak (misal: "A1B2C3")
 const generateInviteCode = () => {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
 };
 
+// Fungsi pembantu untuk memvalidasi apakah user merupakan partisipan aktif kampanye (DM atau Player)
+async function validateCampaignMembership(campaignId: string, email: string) {
+  const campaign = await Campaign.findById(campaignId).populate('characters');
+  if (!campaign) throw new Error("Campaign tidak ditemukan.");
+
+  const lowercaseEmail = email.toLowerCase();
+  
+  // Jika ini solo campaign dan DM adalah AI, pastikan user adalah player utama
+  if (campaign.dmEmail === "ai-dm@dnd-online.com") {
+    const isPlayer = campaign.characters?.some(
+      (c: any) => c.userEmail?.toLowerCase() === lowercaseEmail
+    );
+    if (!isPlayer) {
+      throw new Error("Unauthorized: Anda bukan pemilik petualangan solo ini.");
+    }
+    return campaign;
+  }
+
+  const isDM = campaign.dmEmail.toLowerCase() === lowercaseEmail;
+  const isPlayer = campaign.characters?.some(
+    (c: any) => c.userEmail?.toLowerCase() === lowercaseEmail
+  );
+
+  if (!isDM && !isPlayer) {
+    throw new Error("Unauthorized: Anda tidak terdaftar dalam kampanye ini.");
+  }
+
+  return campaign;
+}
+
 // --- FUNGSI CREATE CAMPAIGN (Dungeon Master) ---
 export async function createCampaignAction(dmEmail: string, name: string, description: string) {
   try {
+    const sessionUser = await getSessionUser();
+    
+    // BOLA Protection: Abaikan dmEmail dari client, gunakan email dari session terverifikasi
+    const validatedEmail = z.string().email("Format email salah").parse(sessionUser.email);
+    const validatedData = CreateCampaignSchema.parse({ name, description });
+    
     await connectDB();
     const inviteCode = generateInviteCode();
-    const newCampaign = new Campaign({ dmEmail, name, description, inviteCode });
+    const newCampaign = new Campaign({ 
+      dmEmail: validatedEmail.toLowerCase(), 
+      name: validatedData.name, 
+      description: validatedData.description, 
+      inviteCode 
+    });
     await newCampaign.save();
     revalidatePath("/campaigns");
     return { success: true, id: newCampaign._id.toString(), inviteCode };
   } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return { success: false, error: error.issues[0]?.message || "Data input tidak valid" };
+    }
     return { success: false, error: error.message };
   }
 }
@@ -30,27 +87,36 @@ export async function createCampaignAction(dmEmail: string, name: string, descri
 // --- FUNGSI JOIN CAMPAIGN (Player) ---
 export async function joinCampaignAction(inviteCode: string, characterId: string) {
   try {
+    const sessionUser = await getSessionUser();
+    const validated = JoinCampaignSchema.parse({ inviteCode, characterId });
     await connectDB();
-    const campaign = await Campaign.findOne({ inviteCode });
+
+    // BOLA/IDOR Protection: Pastikan karakter yang digunakan untuk bergabung adalah milik session user sendiri
+    const character = await Character.findById(validated.characterId);
+    if (!character) return { success: false, error: "Karakter tidak ditemukan!" };
+    if (character.userEmail.toLowerCase() !== sessionUser.email?.toLowerCase()) {
+      return { success: false, error: "Unauthorized: Karakter ini bukan milik Anda!" };
+    }
+
+    const campaign = await Campaign.findOne({ inviteCode: validated.inviteCode });
     if (!campaign) return { success: false, error: "Kode Invite tidak ditemukan!" };
 
-    // Cek apakah karakter valid
-    const character = await Character.findById(characterId);
-    if (!character) return { success: false, error: "Karakter tidak ditemukan!" };
-
     // Cek apakah karakter sudah ada di dalam campaign
-    if (campaign.characters.includes(characterId)) {
+    if (campaign.characters.includes(validated.characterId)) {
       return { success: false, error: "Karakter ini sudah bergabung di Campaign tersebut!" };
     }
 
     // Tambahkan karakter ke campaign
-    campaign.characters.push(characterId);
+    campaign.characters.push(validated.characterId);
     await campaign.save();
 
     revalidatePath("/campaigns");
     revalidatePath(`/campaigns/${campaign._id}`);
     return { success: true, campaignId: campaign._id.toString() };
   } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return { success: false, error: error.issues[0]?.message || "Data input tidak valid" };
+    }
     return { success: false, error: error.message };
   }
 }
@@ -58,37 +124,54 @@ export async function joinCampaignAction(inviteCode: string, characterId: string
 // --- FUNGSI GET CAMPAIGNS (Berdasarkan Email DM atau Karakter) ---
 export async function getUserCampaignsAction(userEmail: string) {
   try {
+    const sessionUser = await getSessionUser();
+    
+    // BOLA Protection: Abaikan input email dari client, paksa email session dari server
+    const validatedEmail = z.string().email("Format email salah").parse(sessionUser.email);
     await connectDB();
     
     // 1. Cari campaign di mana user adalah DM
-    const dmCampaigns = await Campaign.find({ dmEmail: userEmail }).lean();
+    const dmCampaigns = await Campaign.find({ dmEmail: validatedEmail.toLowerCase() }).lean();
     
     // 2. Cari campaign di mana user bermain sebagai Player
-    // Pertama, cari semua ID karakter milik user
-    const userCharacters = await Character.find({ userEmail }).select('_id').lean();
+    const userCharacters = await Character.find({ userEmail: validatedEmail.toLowerCase() }).select('_id').lean();
     const charIds = userCharacters.map(c => c._id);
     
-    // Kedua, cari campaign yang memiliki ID karakter user di dalamnya
     const playerCampaigns = await Campaign.find({ characters: { $in: charIds } })
-      .populate('characters', 'name race class level avatarUrl currentHp hpMax') // Populate untuk menampilkan UI ringkas
+      .populate('characters', 'name race class level avatarUrl currentHp hpMax userEmail')
       .lean();
 
     return JSON.parse(JSON.stringify({ dmCampaigns, playerCampaigns }));
-  } catch (error) {
-    console.error("Gagal mengambil data Campaign:", error);
+  } catch (error: any) {
+    logger.error("CampaignAction", "Gagal mengambil data Campaign", error);
     return { dmCampaigns: [], playerCampaigns: [] };
   }
 }
 
-// --- FUNGSI GET CAMPAIGN BY ID (Beserta data detail karakter) ---
+// --- FUNGSI GET CAMPAIGN BY ID ---
 export async function getCampaignByIdAction(id: string) {
   try {
+    const sessionUser = await getSessionUser();
+    const validatedId = ObjectIdSchema.parse(id);
     await connectDB();
-    const campaign = await Campaign.findById(id).populate('characters').lean();
+
+    const campaign = await Campaign.findById(validatedId).populate('characters').lean();
     if (!campaign) return null;
+
+    // Otorisasi: Pastikan user terdaftar sebagai DM, Player, atau kampanye ini adalah AI Solo Campaign miliknya
+    const isDM = campaign.dmEmail.toLowerCase() === sessionUser.email?.toLowerCase();
+    const isPlayer = campaign.characters?.some(
+      (c: any) => c.userEmail?.toLowerCase() === sessionUser.email?.toLowerCase()
+    );
+
+    // AI DM campaign bypass: izinkan jika user memiliki karakter di solo campaign tersebut
+    if (!isDM && !isPlayer && campaign.dmEmail !== "ai-dm@dnd-online.com") {
+      throw new Error("Unauthorized: Anda tidak memiliki akses ke kampanye ini.");
+    }
+
     return JSON.parse(JSON.stringify(campaign));
-  } catch (error) {
-    console.error("Gagal mengambil detail Campaign:", error);
+  } catch (error: any) {
+    logger.error("CampaignAction", "Gagal mengambil detail Campaign", error);
     return null;
   }
 }
@@ -97,108 +180,183 @@ export async function getCampaignByIdAction(id: string) {
 
 export async function sendCampaignMessageAction(campaignId: string, senderName: string, text: string, isRoll: boolean = false) {
   try {
+    const sessionUser = await getSessionUser();
+    const validated = SendMessageSchema.parse({ campaignId, senderName, text, isRoll });
     await connectDB();
-    await Campaign.findByIdAndUpdate(campaignId, {
-      $push: { chatMessages: { senderName, text, isRoll, createdAt: new Date() } }
+
+    // Validasi kepesertaan kampanye
+    await validateCampaignMembership(validated.campaignId, sessionUser.email!);
+
+    await Campaign.findByIdAndUpdate(validated.campaignId, {
+      $push: { chatMessages: { senderName: validated.senderName, text: validated.text, isRoll: validated.isRoll, createdAt: new Date() } }
     });
-    revalidatePath(`/campaigns/${campaignId}`);
+    revalidatePath(`/campaigns/${validated.campaignId}`);
     return { success: true };
   } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return { success: false, error: error.issues[0]?.message || "Pesan tidak valid" };
+    }
     return { success: false, error: error.message };
   }
 }
 
 export async function updateCombatStateAction(campaignId: string, combatState: any) {
   try {
+    const sessionUser = await getSessionUser();
+    const validated = UpdateCombatStateSchema.parse({ campaignId, combatState });
     await connectDB();
-    await Campaign.findByIdAndUpdate(campaignId, { combatState });
-    revalidatePath(`/campaigns/${campaignId}`);
+
+    // Validasi kepesertaan kampanye
+    await validateCampaignMembership(validated.campaignId, sessionUser.email!);
+
+    await Campaign.findByIdAndUpdate(validated.campaignId, { combatState: validated.combatState });
+    revalidatePath(`/campaigns/${validated.campaignId}`);
     return { success: true };
   } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return { success: false, error: error.issues[0]?.message || "Status pertarungan tidak valid" };
+    }
     return { success: false, error: error.message };
   }
 }
 
 export async function addSharedItemAction(campaignId: string, item: { id: string, name: string, quantity: number }) {
   try {
+    const sessionUser = await getSessionUser();
+    const validated = AddSharedItemSchema.parse({ campaignId, item });
     await connectDB();
-    await Campaign.findByIdAndUpdate(campaignId, {
-      $push: { "sharedInventory.items": item }
+
+    // Validasi kepesertaan kampanye
+    await validateCampaignMembership(validated.campaignId, sessionUser.email!);
+
+    await Campaign.findByIdAndUpdate(validated.campaignId, {
+      $push: { "sharedInventory.items": validated.item }
     });
-    revalidatePath(`/campaigns/${campaignId}`);
+    revalidatePath(`/campaigns/${validated.campaignId}`);
     return { success: true };
   } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return { success: false, error: error.issues[0]?.message || "Barang tidak valid" };
+    }
     return { success: false, error: error.message };
   }
 }
 
 export async function updateSharedGoldAction(campaignId: string, amount: number) {
   try {
+    const sessionUser = await getSessionUser();
+    const validated = UpdateSharedGoldSchema.parse({ campaignId, goldAmount: amount });
     await connectDB();
-    const campaign = await Campaign.findById(campaignId);
-    if (campaign) {
-      campaign.sharedInventory.gold += amount;
-      await campaign.save();
-      revalidatePath(`/campaigns/${campaignId}`);
-    }
+
+    // Validasi kepesertaan kampanye
+    const campaign = await validateCampaignMembership(validated.campaignId, sessionUser.email!);
+
+    campaign.sharedInventory.gold += validated.goldAmount;
+    await campaign.save();
+    revalidatePath(`/campaigns/${validated.campaignId}`);
+    
     return { success: true };
   } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return { success: false, error: error.issues[0]?.message || "Jumlah koin tidak valid" };
+    }
     return { success: false, error: error.message };
   }
 }
 
 export async function updateAudioStateAction(campaignId: string, audioState: string) {
   try {
+    const sessionUser = await getSessionUser();
+    const validatedId = ObjectIdSchema.parse(campaignId);
+    const validatedAudio = z.string().parse(audioState);
+    
     await connectDB();
-    await Campaign.findByIdAndUpdate(campaignId, { audioState });
+
+    // Validasi kepesertaan kampanye
+    await validateCampaignMembership(validatedId.toString(), sessionUser.email!);
+
+    await Campaign.findByIdAndUpdate(validatedId, { audioState: validatedAudio });
     return { success: true };
   } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return { success: false, error: "Audio tidak valid" };
+    }
     return { success: false, error: error.message };
   }
 }
 
 export async function updateGridStateAction(campaignId: string, gridState: any) {
   try {
+    const sessionUser = await getSessionUser();
+    const validated = UpdateGridStateSchema.parse({ campaignId, gridState });
     await connectDB();
-    await Campaign.findByIdAndUpdate(campaignId, { gridState });
+
+    // Validasi kepesertaan kampanye
+    await validateCampaignMembership(validated.campaignId, sessionUser.email!);
+
+    await Campaign.findByIdAndUpdate(validated.campaignId, { gridState: validated.gridState });
     return { success: true };
   } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return { success: false, error: error.issues[0]?.message || "Posisi grid tidak valid" };
+    }
     return { success: false, error: error.message };
   }
 }
 
 export async function claimLootAction(characterId: string, itemName: string) {
   try {
+    const sessionUser = await getSessionUser();
+    const validated = ClaimLootSchema.parse({ characterId, itemName });
     await connectDB();
-    // Cari apakah itu Gold atau Item. Kalau ada kata "Gold" atau "gp"
-    if (itemName.toLowerCase().includes("gold") || itemName.toLowerCase().includes("gp")) {
-      const match = itemName.match(/\d+/);
+
+    // BOLA/IDOR Protection: Pastikan karakter yang mengambil rampasan adalah milik session user
+    const character = await Character.findById(validated.characterId);
+    if (!character) return { success: false, error: "Karakter tidak ditemukan!" };
+    if (character.userEmail.toLowerCase() !== sessionUser.email?.toLowerCase()) {
+      return { success: false, error: "Unauthorized: Karakter ini bukan milik Anda!" };
+    }
+
+    if (validated.itemName.toLowerCase().includes("gold") || validated.itemName.toLowerCase().includes("gp")) {
+      const match = validated.itemName.match(/\d+/);
       const amount = match ? parseInt(match[0]) : 0;
       if (amount > 0) {
-         // Cukup tambahkan gold. Namun Character schema mungkin beda, anggap punya currency.gp
-         await Character.findByIdAndUpdate(characterId, { $inc: { "currency.gp": amount } });
+         await Character.findByIdAndUpdate(validated.characterId, { $inc: { "currency.gp": amount } });
       }
     } else {
-      // Masukkan ke equipment array
-      await Character.findByIdAndUpdate(characterId, { $push: { equipment: itemName } });
+      await Character.findByIdAndUpdate(validated.characterId, { $push: { equipment: validated.itemName } });
     }
     return { success: true };
   } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return { success: false, error: error.issues[0]?.message || "Rampasan tidak valid" };
+    }
     return { success: false, error: error.message };
   }
 }
 
 export async function createSoloCampaignAction(userEmail: string, characterId: string) {
   try {
+    const sessionUser = await getSessionUser();
+    
+    // BOLA Protection: Abaikan input email dari client, paksa email session dari server
+    const validatedEmail = z.string().email("Format email salah").parse(sessionUser.email);
+    const validatedCharId = ObjectIdSchema.parse(characterId);
+    
     await connectDB();
-    const character = await Character.findById(characterId);
+
+    // BOLA/IDOR Protection: Pastikan karakter yang digunakan untuk Solo Campaign adalah milik session user sendiri
+    const character = await Character.findById(validatedCharId);
     if (!character) return { success: false, error: "Karakter tidak ditemukan!" };
+    if (character.userEmail.toLowerCase() !== sessionUser.email?.toLowerCase()) {
+      return { success: false, error: "Unauthorized: Karakter ini bukan milik Anda!" };
+    }
 
     const inviteCode = "SOLO-" + Math.random().toString(36).substring(2, 6).toUpperCase();
     const name = `Petualangan Solo: ${character.name}`;
     const description = `${JSON.stringify({ stage: "introduction" })} | Petualangan solo mendalam yang dipandu oleh AI Dungeon Master. Hadapi bahaya yang mengintai!`;
 
-    // 1. Create default gridState with Tavern Background and Rain weather
+    // 1. Create default gridState dengan Tavern Background dan Rain weather
     const gridState = {
       bgUrl: "/images/pixel_tavern_map.png", 
       weather: "rain",
@@ -250,7 +408,7 @@ export async function createSoloCampaignAction(userEmail: string, characterId: s
       }
     ];
 
-    // Create the Solo campaign with dmEmail as ai-dm@dnd-online.com
+    // Create the Solo campaign dengan dmEmail sebagai ai-dm@dnd-online.com
     const newCampaign = new Campaign({
       dmEmail: "ai-dm@dnd-online.com",
       name,
@@ -260,7 +418,7 @@ export async function createSoloCampaignAction(userEmail: string, characterId: s
       gridState,
       combatState,
       chatMessages,
-      audioState: "tavern" // Starts with cozy tavern music!
+      audioState: "tavern" // Starts dengan cozy tavern music!
     });
 
     await newCampaign.save();
@@ -268,7 +426,7 @@ export async function createSoloCampaignAction(userEmail: string, characterId: s
     revalidatePath("/campaigns");
     return { success: true, campaignId: newCampaign._id.toString() };
   } catch (error: any) {
-    console.error("Gagal membuat Solo Campaign:", error);
+    logger.error("CampaignAction", "Gagal membuat Solo Campaign", error);
     return { success: false, error: error.message };
   }
 }
@@ -350,7 +508,7 @@ function generateImprovisedNarrative(
     }
     else if (rollTotal >= 11) {
       goldReward = 20;
-      text = ` Anda melompat anggun di dekat **${nounDesc}** dan mengeksekusi tarian yang sangat dinamis! ${charName} sang ${raceTitle} ${classTitle} menampilkan kelenturan tubuh luar biasa.\n\n`;
+      text = ` Anda melompat anggun di dekat **${nounDesc}** and mengeksekusi tarian yang sangat dinamis! ${charName} sang ${raceTitle} ${classTitle} menampilkan kelenturan tubuh luar biasa.\n\n`;
       if (stage === "introduction") {
         text += `Gerakan lincah Anda membuat suasana tavern menghangat! Barnaby tertawa lebar dan memberikan Anda **20 Koin Emas (GP)** serta segelas ale gratis! "Pertunjukan yang sangat kreatif, kawan!"`;
       } else if (stage === "chamber" || stage === "deal") {
@@ -695,58 +853,76 @@ function generateImprovisedNarrative(
       newHp = Math.min(character.hpMax + 5, character.currentHp + 5);
       text = `✨ **KEBERHASILAN SANDBOX LEGENDA D&D!**\n\n*Dungeon Master merespon: "${playerMessage}"*\n\nAlam semesta D&D mendengar keinginan ${charName}! Dengan ketangkasan dan karisma seorang ${raceTitle} ${classTitle} sejati, Anda berhasil mengeksekusi manuver unik tersebut dengan sempurna!\n\n`;
       if (stage === "introduction") {
-        text += `Seluruh penghuni Tavern Gilded Flagon terpana menyaksikan ulah kreatif Anda. Barnaby tertawa terpingkal, lalu diam-diam menyodorkan sekantung **40 GP** sambil berbisik: *"Kau adalah petualang paling aneh sekaligus paling menghibur yang pernah menginjakkan kaki di tavernku."* Anda mendapat +5 HP sementara dari semangat yang meluap!`;
+        text += `Seluruh penghuni Tavern Gilded Flagon terpana menyaksikan ulah kreatif Anda. Barnaby tertawa terpingkal, lalu diam-diam menyelipkan **Ramuan Penyembuh** gratis serta **40 GP** ke saku zirah Anda sebagai tips.`;
+        lootItem = { id: "potion-healing", name: "Ramuan Penyembuh (Potion of Healing)", quantity: 1 };
       } else if (stage === "chamber" || stage === "deal") {
-        text += `Para Goblin Cragmaw melotot bingung, lalu saling berpandangan aneh. Kepala Shaman Goblin miring 90 derajat penasaran. Mereka begitu bingung menyaksikan ulah Anda hingga lupa bertempur, dan Anda berhasil menyelinap ke peti besi pusaka mereka, meraup **40 GP**!`;
+        text += `Para Goblin begitu terpukau melihat kepandaian unik Anda mengeksekusi aksi ini! Mereka melupakan kecurigaan mereka sepenuhnya, menjatuhkan gada mereka, and mempersilakan Anda menjarah peti besi pusaka!`;
+        nextStage = "victory";
       } else {
-        text += `Makhluk-makhluk hutan Whispering Woods terpana melihat aksi unik Anda. Semesta merestui keberanian kreatif Anda dengan membuka jalan rahasia dan memberikan sekantung emas tersembunyi berisi **40 GP**!`;
+        text += `Gerakan tak terduga Anda menyingkap batu lumut di semak hutan, memperlihatkan kantong perbekalan ksatria terdahulu berisi **40 GP**!`;
       }
-    }
+    } 
     else if (isNat1) {
-      newHp = Math.max(1, character.currentHp - 3);
-      text = `💥 **BENCANA SANDBOX KONYOL!**\n\n*Dungeon Master merespon: "${playerMessage}"*\n\nNamun Nasib menolak keras manuver aneh Anda! `;
+      newHp = Math.max(1, character.currentHp - 2);
+      text = `💥 **KEGAGALAN SANDBOX KOMEDIK!**\n\n*Dungeon Master merespon: "${playerMessage}"*\n\nNiat Anda begitu membara, namun nasib buruk D&D merusak takdir ${charName}! Aksi Anda berantakan dengan cara yang sangat memalukan!\n\n`;
       if (stage === "introduction") {
-        text += `Anda terpeleset licin, kaki Anda menabrak tiang zirah kayu keras dengan suara dentuman memalukan! Zirah lutut Anda lecet memar dan kantong perbekalan Anda sobek berantakan!\n\n💥 Anda menerima **3 Damage**!`;
+        text += `Anda terpeleset licin menghantam tiang kayu bar ek, membuat piring berisi sup babi Barnaby tumpah menyiram habis zirah dada Anda yang mengilap! Pengunjung tertawa terpingkal-pingkal. Anda menerima **2 Damage Benturan**!`;
       } else if (stage === "chamber" || stage === "deal") {
-        text += `Aksi canggung Anda menimbulkan kegaduhan! Goblin Shaman menunjuk ke arah Anda sambil menjerit: *"Penyusup gila! Bunuh dia!"* Battle terpicu!\n\n💥 Anda menerima **3 Damage Awal**!`;
+        text += `Aksi aneh Anda malah memicu kegaduhan yang membuat Goblin Scout melempar belati kayu beracun langsung menancap di paha zirah Anda! (2 damage). Bersiaplah menghadapi inisiasi pertarungan!`;
         triggerCombat = true;
       } else {
-        text += `Hukum karma D&D menolak keras manuver aneh Anda! Anda menerima **3 Damage** dan satu tanda tanya dari semesta.`;
+        text += `Anda terantuk akar pohon purba basah, meluncur tersungkur mendarat dengan wajah langsung masuk ke sarang lumpur basah berbau busuk! Anda lebam ringan, menerima **2 Damage Fisik**!`;
       }
     }
     else if (rollTotal >= 11) {
-      goldReward = 15;
-      text = `🎲 **IMPROVISASI BERHASIL!**\n\n*Dungeon Master merespon: "${playerMessage}"*\n\n${charName} berhasil mengeksekusi aksi tersebut dengan percaya diri! `;
+      text = `✨ **SANDBOX RPG TERPENUHI!**\n\n*Dungeon Master merespon: "${playerMessage}"*\n\nSebagai ${raceTitle} ${classTitle} yang penuh inisiatif, Anda berhasil menyelaraskan semesta sandbox dengan hasrat petualangan Anda. Manuver tak biasa Anda berjalan lancar di dekat **${nounDesc}**.\n\n`;
       if (stage === "introduction") {
-        text += `Barnaby si bartender mengangguk dengan ekspresi campur aduk antara kagum dan bingung. *"Sungguh... unik. Menghibur, memang."* Ia melempar **15 GP** ke arah Anda sebagai apresiasi atas kreativitas tidak terduga Anda!`;
+        text += `Barnaby tersenyum geli melihat aksi orisinal Anda. Ia memberikan Anda secangkir teh jahe hangat gratis untuk menambah stamina Anda.`;
+      } else if (stage === "ruins") {
+        text += `Aksi sandbox Anda berhasil membongkar gerendel rahasia semak duri benteng luar, membuka rute masuk alternatif yang aman ke aula dalam.`;
+        nextStage = "chamber";
       } else if (stage === "chamber" || stage === "deal") {
-        text += `Para Goblin berpandangan heran satu sama lain, lalu menggelengkan kepala bingung. Kebingungan mereka memberikan Anda celah untuk bergerak bebas sejenak di ruangan ini.`;
+        text += `Para Goblin terdistraksi penuh oleh kelakuan unik Anda, membuka celah menyelinap yang sangat strategis bagi Anda.`;
+        nextStage = "victory";
       } else {
-        text += `Alam semesta Whispering Woods merespons aksi Anda dengan angin sepoi positif. Anda menemukan **15 GP** di saku petualang yang tergeletak di tepi jalan.`;
+        text += `Aksi Anda berhasil menyibak rimbunnya hutan Whispering Woods, mempermudah Anda bergerak maju ke benteng utara.`;
       }
     }
     else {
-      newHp = Math.max(1, character.currentHp - 2);
-      text = `🎲 **AKSI DITERIMA - TAPI TIDAK BERHASIL**\n\n*Dungeon Master merespon: "${playerMessage}"*\n\n${charName} mencoba melakukan hal tersebut... namun nasib kurang berpihak saat ini. `;
+      newHp = Math.max(1, character.currentHp - 1);
+      text = ` *Dungeon Master merespon: "${playerMessage}"*\n\nManuver Anda terasa kurang taktis di dekat **${nounDesc}**, membuat zirah berat Anda menimbulkan bunyi berderit canggung. Hasilnya kurang memuaskan.\n\n`;
       if (stage === "introduction") {
-        text += `Barnaby mengangkat satu alis dengan ekspresi tidak terkesan. *"Hmm. Menarik... tapi tidak cukup untuk membuatku terkesan, petualang."* Anda terpeleset sedikit dan siku Anda membentur sudut bar kayu yang keras. Anda menerima **2 damage memar**!`;
+        text += `Pengunjung tavern mengabaikan Anda secara dingin. Anda tergores paku berkarat di kursi kayu tua saat melangkah mundur canggung (1 damage).`;
       } else if (stage === "chamber" || stage === "deal") {
-        text += `Gaya Anda terlalu janggal. Para Goblin melotot curiga dan mencabut senjata mereka! Battle terpicu!\n\n💥 Anda menerima **2 Damage Awal** dari serangan pendahuluan Goblin!`;
+        text += `Goblin merasa terhina dengan kelakuan sandbox Anda! Mereka melolong memanggil bala bantuan bersiap menyerang dengan belati!`;
         triggerCombat = true;
       } else {
-        text += `Hutan Whispering Woods tidak merespons baik terhadap aksi Anda. Anda tersandung akar pohon dan memar di lutut. **(2 damage)**`;
+        text += `Anda melangkah salah di tanah terjal berbatu hutan Whispering Woods, membuat tumit kaki Anda terkilir memar ringan (1 damage).`;
       }
     }
   }
 
-  return { text, nextStage, newHp, lootItem, goldReward, goldDeduction, triggerCombat };
+  return {
+    text,
+    nextStage,
+    newHp,
+    lootItem,
+    goldReward,
+    goldDeduction,
+    triggerCombat
+  };
 }
 
 export async function processSoloStoryAction(campaignId: string, playerMessage: string) {
   try {
+    const sessionUser = await getSessionUser();
+    const validatedCampaignId = ObjectIdSchema.parse(campaignId);
+    const validatedMessage = z.string().min(1, "Aksi pahlawan tidak boleh kosong").parse(playerMessage);
+    
     await connectDB();
-    const campaign = await Campaign.findById(campaignId).populate('characters');
-    if (!campaign) return { success: false, error: "Campaign tidak ditemukan" };
+
+    // Validasi kepesertaan kampanye: Pastikan hanya pemilik petualangan solo ini yang boleh mengirim aksi
+    const campaign = await validateCampaignMembership(validatedCampaignId.toString(), sessionUser.email!);
 
     const character = campaign.characters[0] as any;
     if (!character) return { success: false, error: "Karakter tidak ditemukan di campaign ini" };
@@ -874,7 +1050,7 @@ export async function processSoloStoryAction(campaignId: string, playerMessage: 
       aiCustomMap = parsed.customMap || null;
       aiWeather = parsed.weather || null;
 
-      // Validate and apply nextStage from AI (only allow forward progression)
+      // Validate and apply nextStage dari AI (hanya mengizinkan maju ke depan)
       const validStages = ["introduction", "wilderness", "ruins", "chamber", "deal", "combat", "victory"];
       const aiStage = parsed.nextStage;
       const currentIdx = validStages.indexOf(stage);
@@ -888,7 +1064,7 @@ export async function processSoloStoryAction(campaignId: string, playerMessage: 
       triggerCombat = parsed.triggerCombat || false;
       lootItem = parsed.lootItem || null;
 
-      // Safety clamp: don't heal above max or kill below 1
+      // Safety clamp: jangan sembuhkan di atas max atau bunuh di bawah 1
       const currentHp = character.currentHp || character.hpMax;
       const newHpFromGemini = Math.max(1, Math.min(character.hpMax + 10, currentHp + hpDelta));
       if (hpDelta !== 0 && newHpFromGemini !== currentHp) {
@@ -904,7 +1080,7 @@ export async function processSoloStoryAction(campaignId: string, playerMessage: 
 
     } else {
       // === DNIE FALLBACK PATH ===
-      // Determine actionType and targetNoun from keywords
+      // Determine actionType dan targetNoun dari kata kunci
       let actionType = "fallback";
       let targetNoun = "lingkungan sekitar";
 
@@ -1095,7 +1271,7 @@ export async function processSoloStoryAction(campaignId: string, playerMessage: 
     return { success: true, campaign: JSON.parse(JSON.stringify(campaign)) };
 
   } catch (error: any) {
-    console.error("Gagal memproses cerita Solo:", error);
+    logger.error("CampaignAction", "Gagal memproses cerita Solo", error);
     return { success: false, error: error.message };
   }
-}
+}

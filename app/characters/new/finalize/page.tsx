@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useCharacterStore } from "@/store/useCharacterStore";
@@ -22,7 +22,12 @@ import {
   CheckCircle2, 
   RefreshCw,
   Sword,
-  ArrowLeft
+  ArrowLeft,
+  BookOpen,
+  Award,
+  Coins,
+  Scroll,
+  Briefcase
 } from "lucide-react";
 
 const playSubmitSound = () => {
@@ -33,26 +38,90 @@ const playSubmitSound = () => {
   } catch (e) {}
 };
 
-const STAT_OPTIONS = ["STR", "DEX", "CON", "INT", "WIS", "CHA"];
-const STAT_COLORS: Record<string, string> = {
-  STR: "text-red-700", DEX: "text-green-700", CON: "text-orange-700",
-  INT: "text-amber-900", WIS: "text-teal-700", CHA: "text-amber-800"
+const playFanfareSound = () => {
+  try {
+    const audio = new Audio('/sounds/fanfare.mp3'); 
+    audio.volume = 0.3;
+    audio.play().catch(() => {});
+  } catch (e) {}
 };
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.15 } }
+const STAT_OPTIONS = ["STR", "DEX", "CON", "INT", "WIS", "CHA"];
+const FULL_STAT_NAMES: Record<string, string> = { 
+  STR: "Strength", DEX: "Dexterity", CON: "Constitution", 
+  INT: "Intelligence", WIS: "Wisdom", CHA: "Charisma" 
 };
-const itemVariants: any = {
-  hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+const STAT_COLORS: Record<string, { text: string; bg: string; border: string }> = {
+  STR: { text: "text-red-800", bg: "bg-red-50", border: "border-red-200" },
+  DEX: { text: "text-emerald-800", bg: "bg-emerald-50", border: "border-emerald-200" },
+  CON: { text: "text-orange-800", bg: "bg-orange-50", border: "border-orange-200" },
+  INT: { text: "text-blue-800", bg: "bg-blue-50", border: "border-blue-200" },
+  WIS: { text: "text-teal-800", bg: "bg-teal-50", border: "border-teal-200" },
+  CHA: { text: "text-purple-800", bg: "bg-purple-50", border: "border-purple-200" }
+};
+
+// Kustom DOM-based Confetti untuk 100% Keandalan & Bebas Dependensi Eksternal
+const triggerCelebrationConfetti = () => {
+  const duration = 4.5 * 1000;
+  const animationEnd = Date.now() + duration;
+
+  const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
+
+  const interval = setInterval(() => {
+    const timeLeft = animationEnd - Date.now();
+
+    if (timeLeft <= 0) {
+      return clearInterval(interval);
+    }
+
+    const particleCount = 40 * (timeLeft / duration);
+    
+    for (let i = 0; i < Math.floor(particleCount / 4); i++) {
+      const confetti = document.createElement('div');
+      confetti.className = 'fixed pointer-events-none z-[9999] rounded-sm transition-opacity duration-1000';
+      
+      const width = randomInRange(7, 14);
+      const height = randomInRange(7, 14);
+      confetti.style.width = `${width}px`;
+      confetti.style.height = `${height}px`;
+      
+      const colors = ['#f59e0b', '#d97706', '#b45309', '#fef3c7', '#fcd34d', '#10b981', '#3b82f6', '#ec4899', '#8b5cf6'];
+      confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+      
+      confetti.style.left = `${randomInRange(0, 100)}vw`;
+      confetti.style.top = `-20px`;
+      confetti.style.transform = `rotate(${randomInRange(0, 360)}deg)`;
+      
+      document.body.appendChild(confetti);
+      
+      const speedY = randomInRange(3, 7);
+      const speedX = randomInRange(-2, 2);
+      let currentTop = -20;
+      let currentLeft = parseFloat(confetti.style.left);
+      
+      const fall = () => {
+        currentTop += speedY;
+        currentLeft += speedX;
+        confetti.style.top = `${currentTop}px`;
+        confetti.style.left = `${currentLeft}vw`;
+        
+        if (currentTop < window.innerHeight) {
+          requestAnimationFrame(fall);
+        } else {
+          confetti.remove();
+        }
+      };
+      
+      requestAnimationFrame(fall);
+    }
+  }, 160);
 };
 
 export default function FinalizeStep() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [generatedId, setGeneratedId] = useState<string>("hero-id-1234");
+  const [generatedId, setGeneratedId] = useState<string>("");
   const [isCopied, setIsCopied] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isStartingGame, setIsStartingGame] = useState(false);
@@ -92,9 +161,27 @@ export default function FinalizeStep() {
   const initiative = calcMod(finalStats.DEX);
   const speed = rulesRace?.speed || 30;
 
+  const allProficientSkills = useMemo(() => {
+    const bgSkills = rulesBg?.skills || [];
+    const classSkills = store.selectedClassSkills || [];
+    return Array.from(new Set([...bgSkills, ...classSkills]));
+  }, [rulesBg, store.selectedClassSkills]);
+
+  const finalEquipmentList = useMemo(() => {
+    const finalEquip = [];
+    if (!store.useStartingWealth) {
+      if (rulesBg?.equipment) finalEquip.push(...rulesBg.equipment);
+      if (rulesClass?.baseEquipment) finalEquip.push(...rulesClass.baseEquipment);
+      Object.values(store.equipmentSelections).forEach(item => finalEquip.push(item as string));
+    } else {
+      finalEquip.push("Traveler's clothes", "A coin pouch containing initial trade funds");
+    }
+    return finalEquip;
+  }, [store.useStartingWealth, rulesBg, rulesClass, store.equipmentSelections]);
+
   const handleSubmit = async () => {
     if (status !== "authenticated" || !session?.user?.email) {
-      store.showToast("Kamu harus Login / Register terlebih dahulu untuk menyimpan pahlawanmu ke Realm!", "error");
+      store.showToast("Kamu harus Login / Register terlebih dahulu untuk merekam pahlawanmu!", "error");
       router.push("/login");
       return;
     }
@@ -102,19 +189,9 @@ export default function FinalizeStep() {
     playSubmitSound();
     setIsSubmitting(true);
     
-    const allProficientSkills = [...(rulesBg?.skills || []), ...store.selectedClassSkills];
-    
-    const finalEquipment = [];
-    if (!store.useStartingWealth) {
-      finalEquipment.push(...(rulesBg?.equipment || []));
-      if (rulesClass?.baseEquipment) finalEquipment.push(...rulesClass.baseEquipment);
-      Object.values(store.equipmentSelections).forEach(item => finalEquipment.push(item as string));
-    } else {
-      finalEquipment.push("Set of traveler's clothes", "A pouch");
-    }
-
     const finalClassName = `${store.charClass}${store.subclass ? ` (${store.subclass})` : ''}`;
     const finalRaceName = store.subrace ? `${store.race} (${store.subrace})` : store.race;
+    
     const flattenedTraits = [
       ...(rulesRace?.traits ? rulesRace.traits.map((t: any) => t.name) : []),
       ...(rulesSubrace?.traits ? rulesSubrace.traits.map((t: any) => t.name) : [])
@@ -122,13 +199,25 @@ export default function FinalizeStep() {
 
     const payload: CharacterPayload = {
       userEmail: session.user.email,
-      name: store.name || "Unnamed Hero", race: finalRaceName, class: finalClassName, alignment: store.alignment || "True Neutral", background: store.background || "Folk Hero",
+      name: store.name || "Unnamed Hero", 
+      race: finalRaceName, 
+      class: finalClassName, 
+      alignment: store.alignment || "True Neutral", 
+      background: store.background || "Folk Hero",
       avatarUrl: displayAvatar || "", 
-      level: 1, hpMax: hpPreview, currentHp: hpPreview, armorClass: acPreview,
-      speed: speed, initiative: initiative,
-      stats: finalStats, proficientSkills: allProficientSkills,
-      equipment: finalEquipment, spells: [...(store.spells || [])],
-      features: flattenedTraits, spellCastingStat: "NONE", weapons: [],
+      level: 1, 
+      hpMax: hpPreview, 
+      currentHp: hpPreview, 
+      armorClass: acPreview,
+      speed: speed, 
+      initiative: initiative,
+      stats: finalStats, 
+      proficientSkills: allProficientSkills,
+      equipment: finalEquipmentList, 
+      spells: [...(store.spells || [])],
+      features: flattenedTraits, 
+      spellCastingStat: rulesClass?.spellcasting || "NONE", 
+      weapons: [],
       roleplay: { traits: store.traits, ideals: store.ideals, bonds: store.bonds, flaws: store.flaws },
       currency: { cp: 0, sp: 0, ep: 0, gp: store.gold, pp: 0 },
       conditions: []
@@ -140,10 +229,12 @@ export default function FinalizeStep() {
         setGeneratedId(result.id || `dnd-${Math.random().toString(36).substring(2, 11)}`);
         setIsSuccess(true);
         setIsSubmitting(false);
-        store.showToast("Karakter berhasil direkam ke dalam sejarah Realm!", "success");
+        playFanfareSound();
+        triggerCelebrationConfetti();
+        store.showToast("Karakter berhasil dicatat ke dalam sejarah Realm!", "success");
       }
     } catch (err) { 
-      store.showToast("Gagal menciptakan karakter. Ada gangguan pada jaringan Weave.", "error");
+      store.showToast("Gagal merajut anyaman Weave. Gagal menciptakan karakter.", "error");
       setIsSubmitting(false); 
     }
   };
@@ -152,7 +243,7 @@ export default function FinalizeStep() {
     const shareableUrl = `${window.location.origin}/characters/${generatedId}`;
     navigator.clipboard.writeText(shareableUrl);
     setIsCopied(true);
-    store.showToast("Link berhasil disalin ke Clipboard!", "success");
+    store.showToast("Link karakter berhasil disalin ke Clipboard!", "success");
     setTimeout(() => setIsCopied(false), 2000);
   };
 
@@ -184,10 +275,10 @@ export default function FinalizeStep() {
       pdf.addImage(dataUrl, "JPEG", 0, 0, canvasWidth, canvasHeight);
       pdf.save(`${store.name || 'Hero'}_Dossier_DNDONLINE.pdf`);
       
-      store.showToast("Dossier berhasil diekspor menjadi PDF!", "success");
+      store.showToast("Dossier berhasil diekspor menjadi lembar cetak PDF!", "success");
     } catch (error) {
       console.error("Gagal mengekspor PDF:", error);
-      store.showToast("Gagal mengekspor PDF. Pastikan gambar avatar Anda bisa diakses secara publik.", "error");
+      store.showToast("Gagal mengekspor dokumen PDF. Pastikan tautan avatar terdistribusi aman.", "error");
     } finally {
       setIsDownloading(false);
     }
@@ -201,24 +292,24 @@ export default function FinalizeStep() {
   const handlePlayNow = async () => {
     if (!session?.user?.email) return;
     setIsStartingGame(true);
-    store.showToast("Mempersiapkan Dungeon Solo AI...", "success");
+    store.showToast("Mempersiapkan dunia solo AI untuk pahlawan Anda...", "success");
     try {
       const res = await createSoloCampaignAction(session.user.email, generatedId);
       if (res.success) {
         store.reset();
         router.push(`/campaigns/${res.campaignId}`);
       } else {
-        store.showToast(res.error || "Gagal masuk permainan", "error");
+        store.showToast(res.error || "Gagal membuka gerbang realm permainan.", "error");
       }
     } catch (e) {
-      store.showToast("Terjadi gangguan saat terhubung ke Weave.", "error");
+      store.showToast("Terjadi kegagalan jaringan transmisi Weave.", "error");
     } finally {
       setIsStartingGame(false);
     }
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[90vh] relative z-10 w-full animate-fadeIn pb-32 px-4 lg:px-10">
+    <div className="flex flex-col items-center justify-center min-h-[90vh] relative z-10 w-full animate-fadeIn pb-32 px-4 lg:px-10 max-w-6xl mx-auto">
       
       <AnimatePresence mode="wait">
         {!isSuccess ? (
@@ -227,252 +318,388 @@ export default function FinalizeStep() {
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -50, opacity: 0, filter: "blur(10px)" }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
             className="text-center mb-8"
           >
-            <h2 className="text-4xl md:text-5xl font-black text-stone-900 mb-2 uppercase tracking-tighter drop-shadow-sm">Gerbang Realm Menanti</h2>
-            <p className="text-stone-500 max-w-2xl mx-auto leading-relaxed text-[10px] uppercase tracking-[0.2em] font-bold">Semua persiapan sudah selesai. Review lembar karakter final Anda di bawah ini.</p>
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-50 rounded-full border border-amber-200 text-amber-700 text-[10px] font-black uppercase tracking-[0.2em] mb-3">
+              <Scroll className="w-3.5 h-3.5" /> Evaluasi Terakhir
+            </div>
+            <h2 className="text-4xl md:text-5xl font-black text-stone-900 mb-2 uppercase tracking-tighter drop-shadow-sm">Sahkan Lembar Karakter</h2>
+            <p className="text-stone-500 max-w-2xl mx-auto leading-relaxed text-[10px] uppercase tracking-[0.2em] font-bold">Pastikan semua alokasi taktis, logistik persenjataan, dan identitas batin Anda sudah sesuai.</p>
           </motion.div>
         ) : (
           <motion.div 
             key="header-success"
-            initial={{ y: 50, opacity: 0, scale: 0.8 }}
+            initial={{ y: 55, opacity: 0, scale: 0.9 }}
             animate={{ y: 0, opacity: 1, scale: 1 }}
             className="text-center mb-8 flex flex-col items-center"
           >
-            <Sparkles className="w-16 h-16 text-emerald-600 mb-4 animate-bounce" />
-            <h2 className="text-5xl md:text-6xl font-black text-emerald-700 mb-3 uppercase tracking-tighter drop-shadow-sm">Pahlawan Terlahir</h2>
-            <p className="text-stone-500 max-w-2xl mx-auto leading-relaxed text-xs uppercase tracking-widest font-bold">Realm menyambut kehadiranmu. Simpan arsip karakter ini.</p>
+            <div className="w-16 h-16 rounded-full bg-green-100 border border-green-300 flex items-center justify-center text-green-700 mb-4 shadow-sm animate-bounce">
+              <Sparkles className="w-8 h-8" />
+            </div>
+            <h2 className="text-4xl md:text-5xl font-black text-green-800 mb-2 uppercase tracking-tighter drop-shadow-sm">Legenda Telah Bangkit</h2>
+            <p className="text-stone-500 max-w-2xl mx-auto leading-relaxed text-[10px] uppercase tracking-[0.2em] font-bold">Hero Anda telah terpatri abadi di database Realm DNDONLINE.</p>
           </motion.div>
         )}
       </AnimatePresence>
       
-      {/* DOSSIER / FULL LANDSCAPE SHEET */}
+      {/* ========================================================================= */}
+      {/* DETAILED DOUBLE-PAGE PARCHMENT CHARACTER SHEET VIEW */}
+      {/* ========================================================================= */}
       <motion.div 
         ref={dossierRef}
-        variants={containerVariants}
-        initial="hidden"
-        animate="show"
-        className="w-full bg-[#fdfaf6] border border-[#d4c5b0] rounded-xl shadow-2xl overflow-hidden mb-12 relative flex flex-col"
-        style={{ minHeight: '800px' }}
+        className="w-full bg-[#fdfaf6] border border-[#d4c5b0] rounded-[2rem] shadow-2xl overflow-hidden mb-10 relative flex flex-col focus-within:border-amber-500 transition-colors duration-300"
+        style={{ minHeight: '850px' }}
       >
-        {/* TOP BANNER: Identity */}
-        <div className="bg-stone-950 w-full p-8 md:p-10 border-b-[6px] border-amber-700 flex flex-col md:flex-row items-center gap-10 relative overflow-hidden shadow-md">
-          <div className="absolute top-1/2 -translate-y-1/2 right-4 opacity-[0.03] pointer-events-none text-[10rem] md:text-[14rem] font-black leading-none text-stone-900 overflow-hidden whitespace-nowrap tracking-tighter">
+        {/* Shadow Overlay Folds effect */}
+        <div className="absolute inset-0 opacity-[0.25] mix-blend-multiply pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] z-0" />
+        <div className="absolute inset-0 bg-gradient-to-r from-stone-900/5 via-transparent to-stone-900/5 pointer-events-none z-10" />
+
+        {/* TOP CALLIGRAPHIC HEADER BLOCK */}
+        <div className="bg-stone-950 w-full p-8 md:p-10 border-b-[6px] border-amber-700 flex flex-col md:flex-row items-center gap-8 md:gap-10 relative overflow-hidden shadow-md">
+          
+          <div className="absolute top-1/2 -translate-y-1/2 right-4 opacity-[0.025] pointer-events-none text-[12rem] md:text-[16rem] font-black leading-none text-white select-none">
             {store.charClass}
           </div>
           
-          <div className="relative z-10 w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-amber-600 bg-stone-800 shadow-[0_0_20px_rgba(217,119,6,0.5)] flex-shrink-0 flex items-center justify-center overflow-hidden">
+          {/* Avatar Shield Frame */}
+          <div className="relative z-10 w-36 h-36 md:w-40 md:h-40 rounded-full border-4 border-amber-600 bg-stone-850 shadow-[0_0_25px_rgba(217,119,6,0.3)] shrink-0 flex items-center justify-center overflow-hidden">
              {proxiedAvatar ? (
-               <img src={proxiedAvatar} alt="Avatar" crossOrigin="anonymous" className="w-full h-full object-cover" />
+               <img src={proxiedAvatar} alt="Avatar" crossOrigin="anonymous" className="w-full h-full object-cover select-none pointer-events-none" />
              ) : (
                <User className="w-16 h-16 text-stone-500" />
              )}
           </div>
           
-          <div className="relative z-10 flex-1 w-full text-center md:text-left flex flex-col justify-center">
-            <h3 className="text-4xl md:text-6xl font-black text-stone-900 uppercase tracking-tighter mb-2 drop-shadow-lg">
+          {/* Title & Lore Metadata */}
+          <div className="relative z-10 flex-1 text-center md:text-left flex flex-col justify-center">
+            <h3 className="text-4xl md:text-6xl font-black text-amber-500 uppercase tracking-tighter drop-shadow-md font-sans">
               {store.name || "UNNAMED HERO"}
             </h3>
             
-            <div className="flex flex-wrap items-center justify-center md:justify-start gap-4">
-              <span className="bg-amber-700 text-amber-50 px-4 py-1.5 rounded-full text-sm font-black uppercase tracking-widest shadow-md">
-                LVL {store.level || 1}
+            <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mt-3">
+              <span className="bg-amber-700 text-stone-900 px-4.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest shadow-md flex items-center gap-1.5">
+                <Award className="w-4 h-4 text-stone-900 shrink-0" /> LVL {store.level || 1}
               </span>
-              <span className="text-stone-300 font-bold uppercase tracking-widest text-sm flex items-center gap-2">
-                {store.subrace ? `${store.race} (${store.subrace})` : (store.race || "Human")} <span className="w-1.5 h-1.5 rounded-full bg-amber-600 inline-block"></span> {store.charClass || "Class"}
+              <span className="text-stone-300 font-bold uppercase tracking-widest text-[11px] flex items-center gap-2">
+                {store.subrace ? `${store.race} (${store.subrace})` : (store.race || "Human")} 
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-600 inline-block"></span> 
+                {store.charClass} {store.subclass ? `(${store.subclass})` : ''}
               </span>
-              <span className="text-stone-400 font-medium uppercase tracking-widest text-xs flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-stone-600 inline-block"></span> {store.background || "Unknown"} <span className="w-1.5 h-1.5 rounded-full bg-stone-600 inline-block"></span> {store.alignment || "Neutral"}
+              <span className="text-stone-400 font-medium uppercase tracking-widest text-[10px] flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-stone-700 inline-block"></span> {store.background || "Folk Hero"} 
+                <span className="w-1.5 h-1.5 rounded-full bg-stone-700 inline-block"></span> {store.alignment || "True Neutral"}
               </span>
             </div>
           </div>
           
-          <div className="relative z-10 hidden lg:block text-right">
-            <div className="text-amber-500/50 text-[10px] font-black uppercase tracking-[0.3em] mb-1">DNDONLINE</div>
-            <div className="text-stone-300 text-xs font-bold uppercase tracking-widest">Official Record</div>
+          {/* Wax Seal / Logo */}
+          <div className="relative z-10 hidden lg:block text-right self-end pb-2 shrink-0 select-none">
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-red-600 to-red-900 border-2 border-red-500 flex items-center justify-center shadow-lg transform rotate-12 mx-auto mb-3">
+              <span className="text-[10px] font-black text-amber-100 uppercase tracking-tighter font-serif drop-shadow">D&D</span>
+            </div>
+            <div className="text-stone-400 text-[8px] font-black uppercase tracking-[0.2em]">Official Record</div>
           </div>
         </div>
 
-        {/* MAIN BODY: 3-Column D&D Style Grid */}
-        <div className="flex flex-col lg:flex-row flex-1 w-full relative z-10">
+        {/* PARCHMENT SHEET BODY */}
+        <div className="flex flex-col lg:flex-row flex-1 w-full relative z-10 bg-[#fdfaf6]">
           
-          {/* LEFT: Ability Scores */}
-          <div className="w-full lg:w-[15%] min-w-[120px] bg-stone-100/50 border-r border-[#d4c5b0] p-6 flex flex-col gap-4 items-center shrink-0">
+          {/* ========================================== */}
+          {/* LEFT PANEL: ABILITY SCORE HEXAGONS */}
+          {/* ========================================== */}
+          <div className="w-full lg:w-[18%] bg-stone-50 border-r border-[#d4c5b0]/60 p-6 flex flex-col sm:flex-row lg:flex-col gap-5 items-center justify-center shrink-0">
             {STAT_OPTIONS.map(stat => {
               const finalVal = finalStats[stat as keyof typeof finalStats];
               const mod = calcMod(finalVal);
+              const colors = STAT_COLORS[stat];
+              
               return (
-                <div key={stat} className="w-24 h-32 bg-white border-2 border-[#d4c5b0] rounded-xl flex flex-col items-center justify-center relative shadow-sm group hover:border-amber-500 transition-colors">
-                  <span className="text-[9px] font-black text-stone-900 uppercase tracking-widest mb-1 absolute top-3">{stat}</span>
-                  <span className="text-4xl font-black text-stone-900 tracking-tighter mt-4">{mod >= 0 ? `+${mod}` : mod}</span>
-                  <div className="w-10 h-6 bg-stone-100 border border-[#d4c5b0] rounded-full absolute -bottom-3 flex items-center justify-center">
-                    <span className="text-[10px] font-bold text-stone-600">{finalVal}</span>
+                <div 
+                  key={stat} 
+                  className={`w-24 h-32 bg-white border border-[#d4c5b0] rounded-2xl flex flex-col items-center justify-center relative shadow-sm group hover:border-amber-500 transition-colors ${colors.border}`}
+                >
+                  {/* Hexagon icon bg */}
+                  <div className="absolute top-2.5 text-stone-400 font-extrabold uppercase text-[9px] tracking-widest leading-none">
+                    {stat}
+                  </div>
+                  
+                  {/* Big Modifier */}
+                  <span className={`text-4xl font-black font-mono tracking-tighter leading-none mt-4.5 ${colors.text}`}>
+                    {mod >= 0 ? `+${mod}` : mod}
+                  </span>
+                  
+                  {/* Small Base Score Badge */}
+                  <div className="w-11 h-6.5 bg-[#fdfaf6] border border-[#d4c5b0] rounded-xl absolute -bottom-3.5 flex items-center justify-center shadow-sm">
+                    <span className="text-[11px] font-black text-stone-700 font-mono">{finalVal}</span>
                   </div>
                 </div>
               )
             })}
           </div>
           
-          {/* CENTER: Combat Vitals & Details */}
-          <div className="flex-1 p-6 lg:p-10 flex flex-col gap-8">
-            {/* Vitals Bar */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 justify-center">
+          {/* ========================================== */}
+          {/* CENTER PANEL: COMBAT VITALS & DETAILED BLOCKS */}
+          {/* ========================================== */}
+          <div className="flex-1 p-6 md:p-8 flex flex-col gap-6 lg:border-r border-[#d4c5b0]/60">
+            
+            {/* Vitals Circle Row */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 justify-center">
               {[
-                { label: "Armor Class", val: acPreview, icon: <Shield className="w-8 h-8 text-amber-900/10" />, outline: "border-amber-300 bg-gradient-to-b from-amber-100/50 to-white", text: "text-amber-900" },
-                { label: "Initiative", val: initiative >= 0 ? `+${initiative}` : initiative, icon: <Zap className="w-8 h-8 text-green-900/10" />, outline: "border-green-200 bg-gradient-to-b from-green-50/50 to-white", text: "text-green-900" },
-                { label: "Speed", val: `${speed}ft`, icon: <Footprints className="w-8 h-8 text-stone-900/10" />, outline: "border-[#d4c5b0] bg-gradient-to-b from-[#fdfaf6] to-white", text: "text-stone-900" },
-                { label: "Max HP", val: hpPreview, icon: <Heart className="w-8 h-8 text-red-900/10" />, outline: "border-red-200 bg-gradient-to-b from-red-50 to-white shadow-inner", text: "text-red-900" }
+                { label: "Armor Class", val: acPreview, icon: <Shield className="w-6 h-6 text-amber-900/20" />, color: "text-amber-850 bg-amber-50/50 border-amber-200" },
+                { label: "Inisiatif", val: initiative >= 0 ? `+${initiative}` : initiative, icon: <Zap className="w-6 h-6 text-green-900/20" />, color: "text-green-800 bg-green-50/50 border-green-200" },
+                { label: "Kecepatan", val: `${speed} Kaki`, icon: <Footprints className="w-6 h-6 text-stone-900/20" />, color: "text-stone-850 bg-stone-50 border-[#d4c5b0]" },
+                { label: "HP Maksimal", val: hpPreview, icon: <Heart className="w-6 h-6 text-red-900/20" />, color: "text-red-800 bg-red-50 border-red-200" }
               ].map((vital, i) => (
-                <div key={i} className={`border-2 rounded-3xl flex flex-col p-6 lg:p-8 relative overflow-hidden items-center justify-center ${vital.outline}`}>
-                  <div className="absolute top-4 left-4">{vital.icon}</div>
-                  <span className={`text-5xl lg:text-6xl font-black tracking-tighter leading-none z-10 drop-shadow-sm ${vital.text}`}>{vital.val}</span>
-                  <span className="text-[10px] lg:text-xs font-black text-stone-600 uppercase tracking-widest mt-3 z-10">{vital.label}</span>
+                <div 
+                  key={i} 
+                  className={`border rounded-2.5xl flex flex-col p-5 items-center justify-center relative overflow-hidden shadow-sm ${vital.color}`}
+                >
+                  <div className="absolute top-3 left-3">{vital.icon}</div>
+                  <span className="text-3.5xl md:text-4.5xl font-black tracking-tighter leading-none z-10 font-mono">{vital.val}</span>
+                  <span className="text-[8.5px] font-black text-stone-500 uppercase tracking-widest mt-2.5 z-10">{vital.label}</span>
                 </div>
               ))}
             </div>
 
-            <div className="flex flex-col lg:flex-row gap-8 flex-1">
-              {/* Proficiencies & Skills */}
-              <div className="flex-1 bg-white border border-[#d4c5b0] rounded-2xl p-6 shadow-sm flex flex-col">
-                <h4 className="text-[10px] font-black text-stone-800 uppercase tracking-[0.2em] mb-4 border-b border-[#d4c5b0] pb-2 flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600" /> Proficiencies & Skills</h4>
-                <div className="flex flex-wrap gap-2">
-                  {store.selectedClassSkills.map((skill: string) => (
-                    <span key={skill} className="text-[10px] font-bold bg-stone-100 text-stone-800 border border-stone-300 px-3 py-1 rounded-sm uppercase tracking-wider">{skill}</span>
-                  ))}
-                  {rulesClass?.proficiencies?.savingThrows?.map((st: string) => (
-                    <span key={st} className="text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 px-3 py-1 rounded-sm uppercase tracking-wider">{st} Save</span>
-                  ))}
+            {/* Inner Details 2-Column */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">
+              
+              {/* Left Details: Skills & Traits */}
+              <div className="bg-white border border-[#d4c5b0] rounded-2.5xl p-5.5 shadow-sm flex flex-col justify-between">
+                <div>
+                  <h4 className="text-[10px] font-black text-stone-900 uppercase tracking-[0.2em] mb-4 border-b border-[#d4c5b0]/60 pb-2.5 flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-green-700" /> Keahlian Keterampilan
+                  </h4>
+                  
+                  <div className="flex flex-wrap gap-2 mb-6">
+                    {allProficientSkills.map((skill: string) => (
+                      <span key={skill} className="text-[9.5px] font-bold bg-[#fdfaf6] text-stone-700 border border-[#d4c5b0] px-2.5 py-1.5 rounded-lg uppercase tracking-wide">
+                        {skill}
+                      </span>
+                    ))}
+                    {allProficientSkills.length === 0 && (
+                      <span className="text-[10px] text-stone-400 font-bold italic">Tidak ada keahlian kemahiran terpilih.</span>
+                    )}
+                  </div>
+
+                  <h4 className="text-[10px] font-black text-stone-900 uppercase tracking-[0.2em] mb-4 border-b border-[#d4c5b0]/60 pb-2.5 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-amber-700" /> Bakat & Fitur Rasial
+                  </h4>
+                  
+                  <div className="flex flex-wrap gap-2">
+                    {rulesRace?.traits?.map((t: any) => (
+                      <span key={t.name} className="text-[9.5px] font-bold bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-1.5 rounded-lg uppercase tracking-wide">
+                        {t.name}
+                      </span>
+                    ))}
+                    {rulesSubrace?.traits?.map((t: any) => (
+                      <span key={`sub-${t.name}`} className="text-[9.5px] font-bold bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-1.5 rounded-lg uppercase tracking-wide">
+                        {t.name}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-                
-                <h4 className="text-[10px] font-black text-stone-800 uppercase tracking-[0.2em] mt-6 mb-4 border-b border-[#d4c5b0] pb-2 flex items-center gap-2"><Sparkles className="w-4 h-4 text-amber-800" /> Features & Traits</h4>
-                <div className="flex flex-wrap gap-2">
-                  {rulesRace?.traits?.map((t: any) => (
-                    <span key={t.name} className="text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 px-3 py-1 rounded-sm uppercase tracking-wider">{t.name}</span>
-                  ))}
+
+                <div className="border-t border-[#d4c5b0]/60 pt-4 mt-6 flex justify-between items-center text-[9px] font-black text-stone-400 uppercase tracking-widest">
+                  <span>Saving Throws</span>
+                  <span className="text-stone-700 font-bold">
+                    {rulesClass?.saves?.join(", ") || "None"}
+                  </span>
                 </div>
               </div>
 
-              {/* Personality */}
-              <div className="flex-1 bg-white border border-[#d4c5b0] rounded-2xl p-6 shadow-sm flex flex-col">
-                <h4 className="text-[10px] font-black text-stone-800 uppercase tracking-[0.2em] mb-4 border-b border-[#d4c5b0] pb-2"><User className="w-4 h-4 text-stone-500 inline mr-2" />Personality</h4>
-                <div className="flex flex-col gap-4 text-sm text-stone-600 italic">
-                  <div><strong className="text-[9px] not-italic font-black text-stone-900 uppercase tracking-widest block mb-1">Personality Traits</strong>"{store.traits || "..."}"</div>
-                  <div><strong className="text-[9px] not-italic font-black text-stone-900 uppercase tracking-widest block mb-1">Ideals</strong>"{store.ideals || "..."}"</div>
-                  <div><strong className="text-[9px] not-italic font-black text-stone-900 uppercase tracking-widest block mb-1">Bonds</strong>"{store.bonds || "..."}"</div>
-                  <div><strong className="text-[9px] not-italic font-black text-stone-900 uppercase tracking-widest block mb-1">Flaws</strong>"{store.flaws || "..."}"</div>
+              {/* Right Details: Persona Batin */}
+              <div className="bg-white border border-[#d4c5b0] rounded-2.5xl p-5.5 shadow-sm flex flex-col justify-between">
+                <div>
+                  <h4 className="text-[10px] font-black text-stone-900 uppercase tracking-[0.2em] mb-4 border-b border-[#d4c5b0]/60 pb-2.5 flex items-center gap-2">
+                    <User className="w-4 h-4 text-stone-500" /> Karakter & Persona Batin
+                  </h4>
+                  
+                  <div className="space-y-4 text-xs text-stone-600 leading-relaxed font-semibold italic">
+                    <div>
+                      <strong className="text-[8px] not-italic font-black text-stone-400 uppercase tracking-[0.15em] block mb-0.5">Sifat & Kebiasaan (Traits)</strong>
+                      <span>"{store.traits || "Mempunyai batin petualang tak gentar."}"</span>
+                    </div>
+                    <div>
+                      <strong className="text-[8px] not-italic font-black text-stone-400 uppercase tracking-[0.15em] block mb-0.5">Keyakinan & Idealisme (Ideals)</strong>
+                      <span>"{store.ideals || "Menjaga kemerdekaan batin."}"</span>
+                    </div>
+                    <div>
+                      <strong className="text-[8px] not-italic font-black text-stone-400 uppercase tracking-[0.15em] block mb-0.5">Ikatan Batin (Bonds)</strong>
+                      <span>"{store.bonds || "Melindungi sesama yang terancam."}"</span>
+                    </div>
+                    <div>
+                      <strong className="text-[8px] not-italic font-black text-stone-400 uppercase tracking-[0.15em] block mb-0.5">Kelemahan Jiwa (Flaws)</strong>
+                      <span>"{store.flaws || "Mudah terpancing rasa penasaran reruntuhan purba."}"</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t border-[#d4c5b0]/60 pt-4 mt-6 flex justify-between items-center text-[9px] font-black text-stone-400 uppercase tracking-widest">
+                  <span>Lifestyle (Gaya Hidup)</span>
+                  <span className="text-stone-750 font-bold">{store.lifestyle || "Modest"}</span>
                 </div>
               </div>
-            </div>
-          </div>
-          
-          {/* RIGHT: Equipment & Spells */}
-          <div className="w-full lg:w-[25%] min-w-[250px] bg-stone-100/50 border-l border-[#d4c5b0] p-6 flex flex-col gap-6 shrink-0">
-            
-            <div className="bg-white border-2 border-stone-300mber-700/20 rounded-xl p-5 shadow-sm text-center">
-              <span className="text-[9px] font-black text-amber-900/50 uppercase tracking-widest block mb-1">Total Wealth</span>
-              <span className="text-4xl font-black text-amber-700 flex items-center justify-center gap-2">{store.gold} <span className="text-sm">GP</span></span>
+
             </div>
 
-            <div className="flex-1 bg-white border border-[#d4c5b0] rounded-xl p-5 shadow-sm flex flex-col">
-              <h4 className="text-[10px] font-black text-stone-800 uppercase tracking-[0.2em] mb-4 border-b border-[#d4c5b0] pb-2">Spells Known</h4>
-              <div className="text-5xl font-black text-cyan-700 mb-2 text-center">{store.spells?.length || 0}</div>
-              <p className="text-[9px] text-stone-500 font-bold uppercase tracking-widest text-center leading-relaxed">Sihir telah ditambahkan ke Grimoire. Silakan lihat di dokumen terpisah atau di VTT Anda.</p>
-            </div>
-            
           </div>
+
+          {/* ========================================== */}
+          {/* RIGHT PANEL: LOGISTIK BAG & GRIMOIRE STATS */}
+          {/* ========================================== */}
+          <div className="w-full lg:w-[25%] bg-stone-50 border-l border-[#d4c5b0]/60 p-6 flex flex-col gap-6 shrink-0 justify-between">
+            
+            <div className="space-y-6">
+              {/* Wealth display */}
+              <div className="bg-white border border-[#d4c5b0] rounded-2xl p-5 shadow-sm text-center relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-2 opacity-5">
+                  <Coins className="w-12 h-12" />
+                </div>
+                <span className="text-[9px] font-black text-stone-400 uppercase tracking-widest block mb-1">Pundi Keuangan Awal</span>
+                <span className="text-4xl font-black text-yellow-700 flex items-center justify-center gap-1.5 font-mono">
+                  {store.gold} <span className="text-sm font-sans font-black text-yellow-800">GP</span>
+                </span>
+              </div>
+
+              {/* Logistik Inventory */}
+              <div className="bg-white border border-[#d4c5b0] rounded-2xl p-5 shadow-sm flex flex-col justify-between min-h-[220px]">
+                <div>
+                  <h4 className="text-[9.5px] font-black text-stone-900 uppercase tracking-[0.2em] mb-4 border-b border-[#d4c5b0]/60 pb-2.5 flex items-center gap-1.5">
+                    <Briefcase className="w-4 h-4 text-stone-500" /> Inventaris Logistik
+                  </h4>
+                  
+                  <div className="flex flex-col gap-2 max-h-[160px] overflow-y-auto pr-1 select-none custom-scrollbar">
+                    {finalEquipmentList.map((item, idx) => (
+                      <span key={idx} className="text-[10px] font-bold text-stone-600 leading-normal border-b border-stone-100 pb-1.5 last:border-0 last:pb-0">
+                        • {item}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Magis Grimoire */}
+              <div className="bg-white border border-[#d4c5b0] rounded-2xl p-5 shadow-sm text-center">
+                <h4 className="text-[9.5px] font-black text-cyan-800 uppercase tracking-[0.2em] mb-3 border-b border-[#d4c5b0]/60 pb-2 flex items-center justify-center gap-1.5">
+                  <BookOpen className="w-4 h-4 text-cyan-700" /> Grimoire Terdaftar
+                </h4>
+                <div className="text-5xl font-black text-cyan-700 leading-none py-2 font-mono">
+                  {store.spells?.length || 0}
+                </div>
+                <span className="text-[8px] font-black text-stone-400 uppercase tracking-widest mt-1 block">Mantra Terpatri</span>
+              </div>
+            </div>
+
+            <div className="text-center text-[9px] font-black text-stone-400 uppercase tracking-[0.2em] pt-4 select-none leading-relaxed border-t border-[#d4c5b0]/40">
+              Realm DNDONLINE Record
+            </div>
+
+          </div>
+
         </div>
+
       </motion.div>
 
-      {/* --- ACTION BUTTONS --- */}
+      {/* ========================================================================= */}
+      {/* SEKSI: DOCK ACTION BUTTONS */}
+      {/* ========================================================================= */}
       <AnimatePresence mode="wait">
         {!isSuccess ? (
           <motion.div 
-            key="submit-btn"
-            initial={{ y: 50, opacity: 0 }}
+            key="submit-dock"
+            initial={{ y: 30, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 50, opacity: 0, filter: "blur(5px)" }}
-            className="w-full max-w-3xl flex flex-col gap-6 items-center"
+            exit={{ y: 40, opacity: 0, filter: "blur(5px)" }}
+            className="w-full max-w-3xl flex flex-col gap-5 items-center z-10"
           >
+            {/* Sahkan Karakter button */}
             <button 
               onClick={handleSubmit} 
               disabled={isSubmitting} 
-              className="w-full relative group overflow-hidden rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed transition-transform active:scale-95 shadow-xl border border-[#d4c5b0]"
+              className="w-full relative group overflow-hidden rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98] shadow-xl border-2 border-stone-900 shrink-0 cursor-pointer"
             >
-              <div className="absolute inset-0 bg-stone-900 transition-all duration-500 group-hover:bg-stone-800"></div>
-              <div className="relative z-10 py-6 flex items-center justify-center gap-4">
+              <div className="absolute inset-0 bg-stone-900 transition-all duration-500 group-hover:bg-stone-850"></div>
+              
+              <div className="relative z-10 py-5.5 flex items-center justify-center gap-3.5 text-stone-100">
                  {isSubmitting ? (
                    <>
-                     <RefreshCw className="w-6 h-6 text-amber-500 animate-spin" />
-                     <span className="text-xl font-black text-stone-900 tracking-[0.3em] uppercase">Mencetak Legenda...</span>
+                     <RefreshCw className="w-5.5 h-5.5 text-amber-500 animate-spin" />
+                     <span className="text-base font-black tracking-[0.25em] uppercase font-sans">Mengunci Takdir Pahlawan...</span>
                    </>
                  ) : (
                    <>
-                     <Sword className="w-6 h-6 text-amber-500" />
-                     <span className="text-xl font-black text-stone-900 tracking-[0.3em] uppercase">Sahkan Karakter</span>
-                     <Sparkles className="w-6 h-6 text-amber-500" />
+                     <Sword className="w-5 h-5 text-amber-500 transition-transform group-hover:rotate-12" />
+                     <span className="text-base font-black tracking-[0.25em] uppercase font-sans">SAHKAN KARAKTER HERO</span>
+                     <Sparkles className="w-5 h-5 text-amber-500 animate-pulse" />
                    </>
                  )}
               </div>
             </button>
             
+            {/* Back to Edit */}
             <button 
               onClick={() => router.push('/characters/new/equipment')}
               disabled={isSubmitting}
-              className="text-[10px] font-bold text-stone-500 hover:text-stone-700 uppercase tracking-[0.2em] transition-colors py-2 flex items-center justify-center gap-2"
+              className="text-[9.5px] font-black text-stone-500 hover:text-stone-800 uppercase tracking-[0.2em] transition-colors py-2 flex items-center justify-center gap-2 cursor-pointer focus:outline-none focus:underline"
             >
-              <ArrowLeft className="w-4 h-4" /> Batal & Kembali Edit Equipment
+              <ArrowLeft className="w-4 h-4" /> Kembali Koreksi Logistik
             </button>
           </motion.div>
         ) : (
           <motion.div 
-            key="success-actions"
-            initial={{ y: 50, opacity: 0 }}
+            key="success-dock"
+            initial={{ y: 35, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-4"
+            className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-4.5 z-10"
           >
+            {/* Download PDF button */}
             <button 
               onClick={handleDownloadPDF}
               disabled={isDownloading}
-              className="bg-white border-2 border-amber-800 hover:bg-amber-100 text-amber-900 rounded-xl py-6 font-black uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-4 group shadow-md"
+              className="bg-white border-2 border-amber-800 hover:bg-amber-50 text-amber-900 rounded-xl py-5 font-black uppercase tracking-wider transition-all active:scale-97 flex items-center justify-center gap-3.5 group shadow-md cursor-pointer"
             >
               {isDownloading ? (
-                <RefreshCw className="w-6 h-6 animate-spin text-amber-800" />
+                <RefreshCw className="w-5 h-5 animate-spin text-amber-800" />
               ) : (
-                <Download className="w-6 h-6 text-amber-800 group-hover:-translate-y-1 transition-transform" />
+                <Download className="w-5 h-5 text-amber-800 group-hover:-translate-y-1 transition-transform" />
               )}
-              <span className="text-[10px]">{isDownloading ? 'MEMPROSES PDF...' : 'DOWNLOAD DOSSIER (PDF)'}</span>
+              <span className="text-[10px]">{isDownloading ? 'MENGEKSPOR DOSSIER...' : 'DOWNLOAD ARSIP DOSSIER (PDF)'}</span>
             </button>
 
+            {/* Share Link button */}
             <button 
               onClick={handleCopyLink}
-              className={`border-2 rounded-xl py-6 font-black uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-4 group shadow-md
-              ${isCopied ? 'bg-green-50 border-green-600 text-green-800' : 'bg-white border-amber-800 hover:bg-amber-100 text-amber-900'}`}
+              className={`border-2 rounded-xl py-5 font-black uppercase tracking-wider transition-all active:scale-97 flex items-center justify-center gap-3.5 group shadow-md cursor-pointer
+              ${isCopied ? 'bg-green-50 border-green-600 text-green-800 hover:bg-green-100' : 'bg-white border-amber-800 hover:bg-amber-50 text-amber-900'}`}
             >
               {isCopied ? (
-                <CheckCircle2 className="w-6 h-6 text-green-600 group-hover:scale-110 transition-transform" />
+                <CheckCircle2 className="w-5 h-5 text-green-600 group-hover:scale-110 transition-transform" />
               ) : (
-                <Link className="w-6 h-6 text-amber-800 group-hover:scale-110 transition-transform" />
+                <Link className="w-5 h-5 text-amber-800 group-hover:scale-110 transition-transform" />
               )}
-              <span className="text-[10px]">{isCopied ? 'LINK DISALIN!' : 'COPY SHAREABLE LINK'}</span>
+              <span className="text-[10px]">{isCopied ? 'TAUTAN BERHASIL DISALIN!' : 'SALIN TAUTAN BAGIKAN (SHARE)'}</span>
             </button>
 
+            {/* Play Now big button */}
             <button 
               onClick={handlePlayNow}
               disabled={isStartingGame}
-              className="md:col-span-2 bg-gradient-to-r from-amber-700 via-amber-600 to-amber-500 hover:from-amber-600 hover:via-amber-500 hover:to-amber-400 text-stone-900 rounded-xl py-6 font-black uppercase tracking-[0.2em] transition-all active:scale-[0.98] flex items-center justify-center gap-4 group shadow-xl border border-amber-800 animate-pulse hover:animate-none"
+              className="md:col-span-2 bg-gradient-to-r from-amber-700 via-amber-600 to-amber-500 hover:from-amber-600 hover:via-amber-500 hover:to-amber-400 text-stone-900 rounded-2xl py-6 font-black uppercase tracking-[0.25em] transition-all active:scale-[0.98] flex items-center justify-center gap-4.5 group shadow-2xl border-2 border-amber-800/80 cursor-pointer text-base hover:shadow-amber-900/20"
             >
               {isStartingGame ? (
-                <RefreshCw className="w-6 h-6 animate-spin text-stone-900" />
+                <RefreshCw className="w-5.5 h-5.5 animate-spin text-stone-900" />
               ) : (
-                <Sword className="w-6 h-6 text-stone-900 group-hover:rotate-12 transition-transform" />
+                <Sword className="w-5.5 h-5.5 text-stone-900 group-hover:rotate-12 transition-transform" />
               )}
-              <span className="text-sm font-black">{isStartingGame ? 'MEMBUKA PORTAL REALM...' : '⚔️ MAIN SEKARANG! (PLAY NOW)'}</span>
+              <span>{isStartingGame ? 'MEMBUKA PORTAL REALM...' : '⚔️ MULAI PETUALANGAN SEKARANG!'}</span>
             </button>
 
+            {/* Hall of Heroes */}
             <button 
               onClick={handleFinish}
-              className="md:col-span-2 mt-4 bg-transparent border-none text-stone-500 hover:text-stone-700 font-bold uppercase tracking-widest text-[10px] transition-colors py-4 flex items-center justify-center gap-2"
+              className="md:col-span-2 mt-4 bg-transparent border-none text-stone-500 hover:text-stone-850 font-black uppercase tracking-widest text-[9.5px] transition-colors py-3 flex items-center justify-center gap-2 cursor-pointer focus:outline-none focus:underline"
             >
               <ArrowLeft className="w-4 h-4" /> Buka Hall of Heroes (Daftar Karakter)
             </button>

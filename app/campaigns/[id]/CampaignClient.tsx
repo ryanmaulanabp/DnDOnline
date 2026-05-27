@@ -3,9 +3,37 @@
 import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { sendCampaignMessageAction, getCampaignByIdAction, claimLootAction, updateCombatStateAction, updateSharedGoldAction, addSharedItemAction, updateGridStateAction, joinCampaignAction, processSoloStoryAction } from "@/app/actions/campaign";
+import { 
+  sendCampaignMessageAction, 
+  getCampaignByIdAction, 
+  claimLootAction, 
+  updateCombatStateAction, 
+  updateSharedGoldAction, 
+  addSharedItemAction, 
+  updateGridStateAction, 
+  joinCampaignAction, 
+  processSoloStoryAction 
+} from "@/app/actions/campaign";
 import { getCharactersByUserAction, updateCharacterHpAction } from "@/app/actions/character";
-import { ScrollText, Send, User, Dice5, Crown, Map, Pickaxe, Flame, RefreshCw, Sword, Shield } from "lucide-react";
+import { 
+  ScrollText, 
+  Send, 
+  User, 
+  Dice5, 
+  Crown, 
+  Map, 
+  Pickaxe, 
+  Flame, 
+  RefreshCw, 
+  Sword, 
+  Shield, 
+  ChevronDown, 
+  Sparkles,
+  Award,
+  BookOpen,
+  Dice1,
+  Coins
+} from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -40,6 +68,10 @@ export default function CampaignClient({ initialCampaign }: { initialCampaign: a
   const [aiThinking, setAiThinking] = useState(false);
   const [spellTrigger, setSpellTrigger] = useState<{ type: string } | null>(null);
 
+  // Smart Scroll states
+  const [showScrollBottomBadge, setShowScrollBottomBadge] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
   const isDM = session?.user?.email === campaign.dmEmail;
   const userChar = campaign.characters?.find((c: any) => c.userEmail === session?.user?.email);
   const isSoloCampaign = campaign.dmEmail === "ai-dm@dnd-online.com";
@@ -48,10 +80,9 @@ export default function CampaignClient({ initialCampaign }: { initialCampaign: a
     if (status === "unauthenticated") router.push("/login");
   }, [status, router]);
 
-  // Polling data every 5 seconds
+  // Polling data data kampanye setiap 5 detik
   useEffect(() => {
     const interval = setInterval(async () => {
-      // Only poll if not currently thinking to avoid overwrite race
       if (!aiThinking) {
         const updated = await getCampaignByIdAction(campaign._id);
         if (updated) setCampaign(updated);
@@ -60,22 +91,45 @@ export default function CampaignClient({ initialCampaign }: { initialCampaign: a
     return () => clearInterval(interval);
   }, [campaign._id, aiThinking]);
 
-  // Smart Scroll: Hanya scroll otomatis ke bawah jika user dekat dengan bagian bawah, atau jika user baru saja mengirim pesan.
+  // Pantau scroll user untuk mendeteksi scroll up / scroll down
+  const handleScroll = () => {
+    const container = chatContainerRef.current;
+    if (!container) return;
+
+    // Anggap di dasar jika jarak ke bawah <= 180px
+    const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight <= 180;
+    
+    if (isAtBottom) {
+      setShowScrollBottomBadge(false);
+      setUnreadCount(0);
+    } else {
+      setShowScrollBottomBadge(true);
+    }
+  };
+
+  // Smart Scroll Trigger: Hanya melompat ke bawah jika user sudah berada di bawah, atau user baru saja melakukan aksi
   useEffect(() => {
     const container = chatContainerRef.current;
     if (!container) return;
 
-    // Hitung apakah user berada di dekat bagian bawah (threshold 180px)
     const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight <= 180;
     
-    // Atau jika pesan terakhir dikirim oleh user sendiri
     const messages = campaign.chatMessages || [];
+    if (messages.length === 0) return;
     const lastMessage = messages[messages.length - 1];
+    
+    // Cek jika pesan berasal dari tindakan user sendiri
     const isMyMsg = lastMessage?.senderName === (isDM ? "Dungeon Master" : userChar?.name);
     const isThinkingMsg = lastMessage?.senderName === "System" && lastMessage?.text?.includes("sedang merajut takdir");
 
     if (isAtBottom || isMyMsg || isThinkingMsg) {
       chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      setUnreadCount(0);
+      setShowScrollBottomBadge(false);
+    } else {
+      // Jika user sedang membaca ke atas, tampilkan badge unread dan cegah auto-scroll yang mengganggu
+      setUnreadCount(prev => prev + 1);
+      setShowScrollBottomBadge(true);
     }
   }, [campaign.chatMessages, isDM, userChar?.name]);
 
@@ -310,11 +364,9 @@ export default function CampaignClient({ initialCampaign }: { initialCampaign: a
     if (aiThinking) return;
     setAiThinking(true);
 
-    // Push thinking status into log optimistically
     await sendCampaignMessageAction(campaign._id, "System", `👹 AI Dungeon Master sedang meracik strategi ${monster.name}...`, false);
 
     setTimeout(async () => {
-      // Refresh campaign data to get latest HP
       const latest = await getCampaignByIdAction(campaign._id);
       const activeCombatState = latest?.combatState || campaign.combatState;
 
@@ -331,7 +383,6 @@ export default function CampaignClient({ initialCampaign }: { initialCampaign: a
         return;
       }
 
-      // Roll attack d20 vs player AC
       const attackRoll = Math.floor(Math.random() * 20) + 1;
       const attackMod = monster.name.includes("Shaman") ? 4 : 3;
       const attackTotal = attackRoll + attackMod;
@@ -380,7 +431,6 @@ export default function CampaignClient({ initialCampaign }: { initialCampaign: a
         text = `[COMBAT_LOG] 👹 ${monster.name} ${quote}\nRoll Serangan: ${attackRoll} + ${attackMod} = ${attackTotal} vs AC ${playerParticipant.ac}. MISS!`;
       }
 
-      // Update combatState
       let newCombatState = { ...activeCombatState };
       newCombatState.participants = [...newCombatState.participants];
       
@@ -391,13 +441,13 @@ export default function CampaignClient({ initialCampaign }: { initialCampaign: a
 
       newCombatState.participants[playerIdx] = { ...newCombatState.participants[playerIdx], hp: newHp };
 
-      // Advance turn
       let nextTurnIdx = newCombatState.turnIndex + 1;
       let nextRound = newCombatState.round;
       if (nextTurnIdx >= newCombatState.participants.length) {
         nextTurnIdx = 0;
         nextRound++;
       }
+
       newCombatState.turnIndex = nextTurnIdx;
       newCombatState.round = nextRound;
 
@@ -408,12 +458,10 @@ export default function CampaignClient({ initialCampaign }: { initialCampaign: a
         return p;
       });
 
-      // PUSH TO DB
       await sendCampaignMessageAction(campaign._id, "Dungeon Master", text, true);
       await updateCombatStateAction(campaign._id, newCombatState);
       await updateCharacterHpAction(playerCharId, newHp);
 
-      // Reload Campaign
       const updated = await getCampaignByIdAction(campaign._id);
       if (updated) setCampaign(updated);
 
@@ -463,7 +511,7 @@ export default function CampaignClient({ initialCampaign }: { initialCampaign: a
       rollTotal = parseInt(damageOrHealStr) || 4;
     }
 
-    rollTotal += 4; // Modifier
+    rollTotal += 4; 
 
     let text = "";
     let newCombatState = { ...campaign.combatState };
@@ -566,6 +614,7 @@ export default function CampaignClient({ initialCampaign }: { initialCampaign: a
     setTimeout(() => {
       setIsRolling(false);
       setScreenShake("");
+      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, 1500);
   };
 
@@ -613,13 +662,13 @@ export default function CampaignClient({ initialCampaign }: { initialCampaign: a
               >
                 {isJoining ? (
                   <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    Memasuki Tavern...
+                     <RefreshCw className="w-4 h-4 animate-spin" />
+                     Memasuki Tavern...
                   </>
                 ) : (
                   <>
-                    <Sword className="w-4 h-4" />
-                    Masuk Kampanye Sekarang
+                     <Sword className="w-4 h-4" />
+                     Masuk Kampanye Sekarang
                   </>
                 )}
               </button>
@@ -642,19 +691,23 @@ export default function CampaignClient({ initialCampaign }: { initialCampaign: a
     const textToSend = chatMsg;
     setChatMsg("");
     
-    // 1. Optimistic Update
     const updatedMessages = [...(campaign.chatMessages || []), { senderName: sender, text: textToSend, isRoll: false, createdAt: new Date() }];
-    setCampaign(prev => ({
+    setCampaign((prev: any) => ({
       ...prev,
       chatMessages: updatedMessages
     }));
 
+    // Paksa scroll ke bawah instan saat player mengetik pesan sendiri
+    setTimeout(() => {
+      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      setUnreadCount(0);
+      setShowScrollBottomBadge(false);
+    }, 60);
+
     if (isSoloCampaign && !campaign.combatState?.isActive && !isDM) {
-      // 2. Process story narrative through AI Engine
       setAiThinking(true);
       
-      // Push optimistic "System" thinking message
-      setCampaign(prev => ({
+      setCampaign((prev: any) => ({
         ...prev,
         chatMessages: [...updatedMessages, { senderName: "System", text: "🎙️ AI Dungeon Master sedang merajut takdir Anda...", isRoll: false, createdAt: new Date() }]
       }));
@@ -665,7 +718,6 @@ export default function CampaignClient({ initialCampaign }: { initialCampaign: a
       }
       setAiThinking(false);
     } else {
-      // 3. Regular chat message
       await sendCampaignMessageAction(campaign._id, sender, textToSend, false);
     }
   };
@@ -673,13 +725,12 @@ export default function CampaignClient({ initialCampaign }: { initialCampaign: a
   const rollDice = async (sides: number) => {
     if (isRolling) return;
     setIsRolling(true);
+    playSound("dice");
     
     const result = Math.floor(Math.random() * sides) + 1;
     const sender = isDM ? "Dungeon Master" : (userChar?.name || "Player");
     
-    let effect = "";
     if (sides === 20 && result === 20) { 
-      effect = "crit"; 
       setScreenShake("crit"); 
       confetti({
         particleCount: 150,
@@ -688,7 +739,7 @@ export default function CampaignClient({ initialCampaign }: { initialCampaign: a
         colors: ['#d97706', '#f59e0b', '#fbbf24', '#2563eb']
       });
     }
-    if (sides === 20 && result === 1) { effect = "fail"; setScreenShake("fail"); }
+    if (sides === 20 && result === 1) { setScreenShake("fail"); }
     
     const text = `Memutar d${sides} dan mendapat hasil: ${result}`;
     
@@ -698,19 +749,25 @@ export default function CampaignClient({ initialCampaign }: { initialCampaign: a
       ...campaign,
       chatMessages: [...(campaign.chatMessages || []), { senderName: sender, text, isRoll: true, createdAt: new Date() }]
     });
+
+    // Paksa scroll ke bawah instan saat player mengocok dadu
+    setTimeout(() => {
+      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      setUnreadCount(0);
+      setShowScrollBottomBadge(false);
+    }, 60);
     
     setTimeout(() => {
       setIsRolling(false);
       setScreenShake("");
-    }, 1500); // Effect duration
+    }, 1500); 
   };
 
   const handleClaimLoot = async (itemName: string) => {
-    if (!userChar) return alert("Hanya player (karakter) yang bisa klaim loot!");
+    if (!userChar) return alert("Hanya player yang bisa mengklaim rampasan loot!");
     const res = await claimLootAction(userChar._id, itemName);
     if (res.success) {
-      alert(`Berhasil mengambil: ${itemName}! (Silakan cek di halaman Karakter Anda)`);
-      // Optionally notify group
+      alert(`Berhasil mengambil: ${itemName}! Silakan evaluasi lembar Karakter Anda.`);
       await sendCampaignMessageAction(campaign._id, "System", `${userChar.name} telah mengambil [${itemName}]`, false);
     } else {
       alert("Gagal mengklaim loot.");
@@ -720,31 +777,24 @@ export default function CampaignClient({ initialCampaign }: { initialCampaign: a
   const handleRollAttack = async (weaponName: string, damageStr: string) => {
     if (!userChar || !selectedTargetId || !campaign.combatState) return;
     
-    // Find Target
     const target = campaign.combatState.participants.find((p: any) => p.id === selectedTargetId);
     if (!target) return;
 
-    // Find Attacker
     const attackerIdx = campaign.combatState.participants.findIndex((p: any) => p.name === userChar.name);
     if (attackerIdx === -1) return;
 
     setIsRolling(true);
 
-    // Roll D20
     const attackRoll = Math.floor(Math.random() * 20) + 1;
-    // Simulated modifier +3
     const attackTotal = attackRoll + 3;
-
     const isHit = attackTotal >= (target.ac || 10);
 
     let text = `[COMBAT_LOG] Menyerang ${target.name} dengan ${weaponName}!\nRoll Serangan: ${attackRoll} + 3 = ${attackTotal} vs AC ${target.ac || 10}.`;
     
     let newCombatState = { ...campaign.combatState };
-    // Create new array to avoid direct mutation
     newCombatState.participants = [...newCombatState.participants];
 
     if (isHit) {
-      // Parse damage (e.g. "1d8")
       const dmgMatch = damageStr.match(/(\d+)d(\d+)/);
       let dmgResult = 0;
       if (dmgMatch) {
@@ -754,34 +804,34 @@ export default function CampaignClient({ initialCampaign }: { initialCampaign: a
       } else {
         dmgResult = parseInt(damageStr) || 1;
       }
-      // Add str/dex modifier to damage (simulated +2)
       dmgResult += 2;
       
       text += `\nHIT! Menghasilkan ${dmgResult} Damage!`;
       setScreenShake("crit");
       
-      // Reduce Target HP
       const targetIdx = newCombatState.participants.findIndex((p: any) => p.id === selectedTargetId);
       newCombatState.participants[targetIdx] = { ...newCombatState.participants[targetIdx], hp: newCombatState.participants[targetIdx].hp - dmgResult };
     } else {
-      text += `\nMISS! Serangan gagal menembus pertahanan.`;
+      text += `\nMISS! Serangan meleset dari target.`;
       setScreenShake("fail");
     }
 
-    // Deduct Action
     newCombatState.participants[attackerIdx] = { ...newCombatState.participants[attackerIdx], action: newCombatState.participants[attackerIdx].action - 1 };
 
     await sendCampaignMessageAction(campaign._id, userChar.name, text, true);
     await updateCombatStateAction(campaign._id, newCombatState);
     
-    // Optimistic Update
     setCampaign({
       ...campaign,
       combatState: newCombatState,
       chatMessages: [...(campaign.chatMessages || []), { senderName: userChar.name, text, isRoll: true, createdAt: new Date() }]
     });
     
-    setTimeout(() => { setIsRolling(false); setScreenShake(""); }, 1500);
+    setTimeout(() => { 
+      setIsRolling(false); 
+      setScreenShake(""); 
+      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 1500);
   };
 
   return (
@@ -791,24 +841,40 @@ export default function CampaignClient({ initialCampaign }: { initialCampaign: a
         screenShake === "fail" ? { x: [-5, 5, -5, 5, 0], opacity: [1, 0.8, 1] } : {}
       }
       transition={{ duration: 0.5 }}
-      className={`min-h-screen ${screenShake === 'crit' ? 'bg-amber-100' : screenShake === 'fail' ? 'bg-red-950' : 'bg-[#fdfaf6]'} text-stone-700 p-4 md:p-8 relative overflow-hidden flex flex-col transition-colors duration-500`}
+      className={`min-h-screen ${screenShake === 'crit' ? 'bg-amber-100' : screenShake === 'fail' ? 'bg-red-950/80' : 'bg-[#fdfaf6]'} text-stone-700 p-4 md:p-8 relative overflow-hidden flex flex-col transition-colors duration-500`}
     >
       <div className="absolute inset-0 opacity-[0.4] mix-blend-multiply pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')]" />
       
       {/* Spell Particles Canvas Overlay */}
       <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-[160]" />
       
-      {/* 3D Dice Overlay Effect */}
+      {/* 3D Dynamic Dice Roll Ceremony overlay */}
       <AnimatePresence>
         {isRolling && (
-          <motion.div initial={{ scale: 0, rotate: -180 }} animate={{ scale: 2, rotate: 360 }} exit={{ scale: 0, opacity: 0 }} transition={{ type: "spring", stiffness: 100 }} className="fixed inset-0 z-[200] pointer-events-none flex items-center justify-center drop-shadow-[0_0_50px_rgba(217,119,6,0.6)]">
-             <Dice5 className="w-32 h-32 text-amber-600 animate-pulse" />
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }} 
+            className="fixed inset-0 z-[200] pointer-events-none flex flex-col items-center justify-center bg-black/35 backdrop-blur-xs"
+          >
+             <motion.div 
+               initial={{ scale: 0.4, rotate: -270 }} 
+               animate={{ scale: [1, 1.15, 1], rotate: 720 }} 
+               exit={{ scale: 0, opacity: 0 }} 
+               transition={{ type: "spring", stiffness: 120, damping: 10 }}
+               className="drop-shadow-[0_0_50px_rgba(217,119,6,0.6)] bg-[#fdfaf6] p-10 rounded-3xl border border-[#d4c5b0] flex flex-col items-center justify-center gap-4"
+             >
+               <Dice5 className="w-24 h-24 text-amber-700 animate-spin" style={{ animationDuration: '0.8s' }} />
+               <span className="text-amber-800 text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">Merajut Takdir Dadu...</span>
+             </motion.div>
           </motion.div>
         )}
+        
+        {/* Your Turn Indicator banner */}
         {showMyTurn && (
-          <motion.div initial={{ scale: 3, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0, opacity: 0 }} transition={{ type: "spring", stiffness: 150, damping: 10 }} className="fixed inset-0 z-[250] pointer-events-none flex items-center justify-center bg-black/20 backdrop-blur-sm">
-             <h1 className="text-7xl md:text-9xl font-black text-transparent bg-clip-text bg-gradient-to-b from-amber-300 to-amber-700 uppercase tracking-tighter drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)]" style={{ WebkitTextStroke: '3px #451a03' }}>
-               YOUR TURN!
+          <motion.div initial={{ scale: 3, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0, opacity: 0 }} transition={{ type: "spring", stiffness: 150, damping: 10 }} className="fixed inset-0 z-[250] pointer-events-none flex items-center justify-center bg-black/20 backdrop-blur-xs">
+             <h1 className="text-6xl md:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-b from-amber-300 via-amber-500 to-amber-700 uppercase tracking-tighter drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)]" style={{ WebkitTextStroke: '3px #451a03' }}>
+               GILIRAN ANDA!
              </h1>
           </motion.div>
         )}
@@ -816,29 +882,32 @@ export default function CampaignClient({ initialCampaign }: { initialCampaign: a
       
       {isDM && <DMScreen campaignId={campaign._id} characters={campaign.characters} />}
 
-      <header className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-6 bg-white/80 p-6 rounded-3xl border border-stone-300 shadow-sm backdrop-blur-sm">
+      {/* HEADER HUD BAR */}
+      <header className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-6 bg-white/80 p-5 rounded-3xl border border-[#d4c5b0] shadow-sm backdrop-blur-sm">
         <div>
            <h1 className="text-3xl font-black text-stone-900 uppercase tracking-tighter flex items-center gap-3">
-             <Map className="w-8 h-8 text-amber-700" /> {campaign.name}
+             <Map className="w-8 h-8 text-amber-800 shrink-0" /> {campaign.name}
            </h1>
-           <p className="text-[10px] font-black text-stone-500 uppercase tracking-widest mt-1">Kode Invite: {campaign.inviteCode}</p>
+           <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest mt-1.5 pl-0.5">Invite Code: {campaign.inviteCode}</p>
         </div>
-        <div className="flex flex-col md:flex-row items-end md:items-center gap-4 w-full lg:w-auto">
+        <div className="flex flex-col md:flex-row items-end md:items-center gap-4 w-full lg:w-auto shrink-0">
            <AudioSync currentAudio={campaign.audioState} isDM={isDM} campaignId={campaign._id} />
-           <div className="flex items-center gap-3 bg-[#fdfaf6] border border-stone-300 px-4 py-3 rounded-xl h-full">
-             <span className="text-[9px] font-black text-stone-500 uppercase tracking-widest">Sesi:</span>
-             <span className={`text-xs font-black uppercase tracking-widest ${isDM ? 'text-amber-700' : 'text-emerald-700'}`}>
+           
+           <div className="flex items-center gap-3 bg-[#fdfaf6] border border-[#d4c5b0] px-4 py-2.5 rounded-xl h-full shadow-sm">
+             <span className="text-[8px] font-black text-stone-400 uppercase tracking-widest">Sesi Aktif:</span>
+             <span className={`text-[10.5px] font-black uppercase tracking-widest ${isDM ? 'text-amber-800' : 'text-emerald-700'}`}>
                {isDM ? 'Dungeon Master' : userChar?.name}
              </span>
            </div>
         </div>
       </header>
 
+      {/* DASHBOARD GRID */}
       <div className="flex-1 relative z-10 grid grid-cols-1 xl:grid-cols-4 gap-6 min-h-0">
          
-         {/* LEFT COLUMN: Main Content Tabs */}
+         {/* LEFT COLUMN: VTT grid and trackers */}
          <div className="xl:col-span-3 flex flex-col gap-6">
-           <div className="flex gap-2 overflow-x-auto custom-scrollbar border-b border-stone-300 pb-2">
+           <div className="flex gap-2 overflow-x-auto custom-scrollbar border-b border-[#d4c5b0] pb-2.5">
              {[
                { id: "grid", icon: <Map className="w-4 h-4" />, label: "Battle Grid" },
                { id: "combat", icon: <Flame className="w-4 h-4" />, label: "Combat Tracker" },
@@ -847,120 +916,166 @@ export default function CampaignClient({ initialCampaign }: { initialCampaign: a
                <button 
                  key={tab.id} 
                  onClick={() => setActiveTab(tab.id)} 
-                 className={`px-6 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === tab.id ? 'bg-amber-800 text-stone-100 shadow-sm' : 'bg-white/50 text-stone-500 hover:text-stone-900 hover:bg-white'}`}
+                 className={`px-5 py-3 rounded-xl font-black uppercase text-[9.5px] tracking-widest transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer
+                   ${activeTab === tab.id ? 'bg-amber-850 text-stone-100 shadow-md border border-amber-900/30' : 'bg-white/70 text-stone-500 hover:text-stone-850 hover:bg-white'}`}
                >
                  {tab.icon} {tab.label}
                </button>
              ))}
            </div>
            
-           <div className="flex-1 min-h-[400px]">
+           <div className="flex-1 min-h-[420px]">
              {activeTab === "grid" && <BattleGrid gridState={campaign.gridState || {}} combatState={campaign.combatState || {}} isDM={isDM} campaignId={campaign._id} characters={campaign.characters || []} userCharId={userChar?._id} selectedTargetId={selectedTargetId} onSelectTarget={setSelectedTargetId} />}
              {activeTab === "combat" && <CombatTracker campaign={campaign} isDM={isDM} campaignId={campaign._id} />}
              {activeTab === "loot" && <SharedLoot campaign={campaign} campaignId={campaign._id} />}
            </div>
          </div>
 
-         {/* RIGHT COLUMN: Party Tracker & Chat */}
+         {/* RIGHT COLUMN: Party Tracker & Chat System */}
          <div className="xl:col-span-1 flex flex-col gap-6">
-           <div className="bg-white/80 border border-stone-300 rounded-3xl shadow-sm p-4 flex flex-col max-h-[250px] overflow-hidden">
-              <h2 className="text-[9px] font-black text-stone-500 uppercase tracking-widest mb-3 flex items-center gap-2 border-b border-stone-200 pb-2">
-                <User className="w-3 h-3 text-stone-400" /> Anggota Party
+           
+           {/* PARTY TRACKER STATUS PANEL */}
+           <div className="bg-white/85 border border-[#d4c5b0] rounded-[2rem] shadow-sm p-4 flex flex-col max-h-[250px] overflow-hidden">
+              <h2 className="text-[9px] font-black text-stone-400 uppercase tracking-widest mb-3 flex items-center gap-2 border-b border-stone-100 pb-2">
+                <User className="w-3.5 h-3.5 text-stone-400" /> Anggota Party ({campaign.characters?.length || 0})
               </h2>
-              <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2">
+              
+              <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2.5 pr-0.5 select-none">
                  {campaign.characters?.map((char: any) => {
                    const hpPercent = (char.currentHp / char.hpMax) * 100;
                    return (
-                     <div key={char._id} className="bg-[#fdfaf6] border border-stone-200 p-2.5 rounded-xl relative overflow-hidden">
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-[9px] font-black text-stone-900 uppercase tracking-widest truncate">{char.name}</span>
-                          <span className="text-[7px] font-black bg-stone-200 text-stone-600 px-1.5 py-0.5 rounded-full uppercase tracking-widest shrink-0">Lv {char.level}</span>
+                     <div key={char._id} className="bg-[#fdfaf6] border border-[#d4c5b0] p-3 rounded-xl relative overflow-hidden shadow-xs hover:border-[#a6937a] transition-colors">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[10px] font-black text-stone-800 uppercase tracking-wide truncate">{char.name}</span>
+                          <span className="text-[8px] font-black bg-stone-200/60 text-stone-600 px-2 py-0.5 rounded-lg tracking-wider shrink-0 uppercase">Lv {char.level || 1} {char.class?.split(' ')[0]}</span>
                         </div>
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="text-[7px] font-black text-stone-500 uppercase tracking-widest">HP</span>
-                          <span className="text-[8px] font-bold text-stone-700">{char.currentHp} / {char.hpMax}</span>
+                        
+                        <div className="flex justify-between items-center mb-1 text-[8px] font-black text-stone-400 uppercase tracking-widest">
+                          <span>Hit Points (HP)</span>
+                          <span className="text-stone-700 font-mono">{char.currentHp} / {char.hpMax}</span>
                         </div>
-                        <div className="w-full h-1 bg-stone-200 rounded-full overflow-hidden">
-                          <motion.div animate={{ width: `${hpPercent}%` }} className={`h-full ${hpPercent < 30 ? 'bg-red-500' : 'bg-emerald-500'}`} />
+                        
+                        <div className="w-full h-1.5 bg-stone-200 rounded-full overflow-hidden border border-stone-300/30">
+                          <motion.div 
+                            animate={{ width: `${hpPercent}%` }} 
+                            className={`h-full ${hpPercent < 30 ? 'bg-red-500 animate-pulse' : 'bg-emerald-500'}`} 
+                          />
                         </div>
                      </div>
                    )
                  })}
                  {(!campaign.characters || campaign.characters.length === 0) && (
-                   <div className="text-center p-4 text-[9px] font-black text-stone-400 uppercase tracking-widest">Kosong</div>
+                   <div className="text-center py-6 text-[9.5px] font-black text-stone-400 uppercase tracking-widest italic">Kosong</div>
                  )}
               </div>
            </div>
            
-           <div className="bg-white/80 border border-stone-300 rounded-3xl shadow-sm flex flex-col xl:h-[380px] h-[450px] overflow-hidden">
-              <h2 className="text-[9px] font-black text-stone-500 uppercase tracking-widest p-4 border-b border-stone-200 flex items-center justify-between">
-                <span className="flex items-center gap-2"><ScrollText className="w-3 h-3 text-stone-400" /> Tavern Log</span>
-                {isRolling && <span className="text-amber-600 animate-pulse font-bold tracking-widest text-[8px] uppercase">Mengocok dadu...</span>}
+           {/* TAVERN NARRATIVE DIARY CHAT */}
+           <div className="bg-white/85 border border-[#d4c5b0] rounded-[2rem] shadow-sm flex flex-col xl:h-[390px] h-[450px] overflow-hidden relative">
+              <h2 className="text-[9px] font-black text-stone-400 uppercase tracking-widest p-4 border-b border-stone-200 flex items-center justify-between shrink-0 select-none bg-white">
+                <span className="flex items-center gap-2"><ScrollText className="w-3.5 h-3.5 text-stone-400" /> Tavern Log</span>
+                {isRolling && <span className="text-amber-800 animate-pulse font-bold tracking-widest text-[8px] uppercase">Mengocok takdir...</span>}
               </h2>
               
-              <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-2 bg-[#fdfaf6] custom-scrollbar relative">
-                 {/* Story Book Background */}
-                 <div className="absolute inset-0 opacity-[0.4] mix-blend-multiply pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')]" />
-                 
-                 {campaign.chatMessages?.map((msg: any, i: number) => {
-                   const isMyMsg = msg.senderName === (isDM ? "Dungeon Master" : userChar?.name);
-                   const isSysMsg = msg.senderName === "System";
-                   
-                   if (isSysMsg) {
-                     return (
-                       <div key={i} className="text-center">
-                         <span className="inline-block bg-stone-200 text-stone-500 px-2 py-0.5 rounded-full text-[7px] font-black uppercase tracking-widest border border-stone-300">{msg.text}</span>
-                       </div>
-                     )
-                   }
+              {/* Tavern Log Main scroll container */}
+              <div 
+                ref={chatContainerRef} 
+                onScroll={handleScroll}
+                className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#fdfaf6] custom-scrollbar relative"
+              >
+                  {/* Parchment background layers */}
+                  <div className="absolute inset-0 opacity-[0.25] mix-blend-multiply pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] z-0" />
+                  
+                  {campaign.chatMessages?.map((msg: any, i: number) => {
+                    const isMyMsg = msg.senderName === (isDM ? "Dungeon Master" : userChar?.name);
+                    const isSysMsg = msg.senderName === "System";
+                    
+                    if (isSysMsg) {
+                      return (
+                        <div key={i} className="text-center py-1 z-10 relative">
+                          <span className="inline-block bg-stone-200 text-stone-500 px-3.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border border-stone-300/60 shadow-xs">{msg.text}</span>
+                        </div>
+                      )
+                    }
 
-                   // Parse LOOT Tag
-                   const lootMatch = msg.text.match(/\[LOOT:\s*(.+?)\]/);
-                   let displayText = msg.text;
-                   if (lootMatch) {
-                     displayText = msg.text.replace(lootMatch[0], ""); 
-                   }
+                    // Parse [LOOT: item] tag
+                    const lootMatch = msg.text.match(/\[LOOT:\s*(.+?)\]/);
+                    let displayText = msg.text;
+                    if (lootMatch) {
+                      displayText = msg.text.replace(lootMatch[0], ""); 
+                    }
 
                     const isCombatLog = msg.text.startsWith("[COMBAT_LOG] ");
                     const actualText = isCombatLog ? msg.text.replace("[COMBAT_LOG] ", "") : displayText;
 
+                    const isNarrator = msg.senderName === "Dungeon Master";
+
                     return (
-                      <div key={i} className={`flex flex-col ${isMyMsg ? 'items-end' : 'items-start'} mb-3`}>
-                         <span className="text-[8px] font-black text-amber-900/60 uppercase tracking-widest mb-1 mx-1 drop-shadow-sm">
+                      <div key={i} className={`flex flex-col ${isMyMsg ? 'items-end' : 'items-start'} mb-2.5 z-10 relative`}>
+                         <span className="text-[8px] font-black text-amber-900/60 uppercase tracking-widest mb-1 mx-1.5 drop-shadow-sm select-none">
                            {msg.senderName}
                          </span>
-                         <div className={`max-w-[90%] p-3 rounded-2xl border-2 flex flex-col gap-1.5 shadow-sm 
-                           ${isCombatLog ? 'bg-red-950/10 border-red-900/30 text-red-950 font-serif text-sm' : 
-                             msg.isRoll ? 'bg-amber-100 border-amber-300 text-amber-900 shadow-sm font-serif text-sm' : 
-                             isMyMsg ? 'bg-stone-800 text-stone-100 border-stone-900' : 
-                             'bg-white/80 backdrop-blur-sm text-stone-800 border-[#d4c5b0]'}
+                         
+                         {/* Highly rich styled story bubble frames */}
+                         <div className={`max-w-[90%] p-3.5 rounded-2xl border flex flex-col gap-1.5 shadow-sm transition-all duration-300
+                           ${isCombatLog 
+                             ? 'bg-red-950/5 border-red-900/20 text-red-950 font-serif text-xs leading-relaxed font-bold shadow-[0_4px_12px_rgba(153,27,27,0.02)]' 
+                             : msg.isRoll 
+                               ? 'bg-amber-50 border-amber-300 text-amber-950 font-serif text-xs leading-relaxed font-semibold border-2' 
+                               : isNarrator
+                                 ? 'bg-amber-50/40 border-amber-250 text-amber-950 font-serif text-[12.5px] leading-relaxed font-medium shadow-[0_4px_12px_rgba(217,119,6,0.02)]'
+                                 : isMyMsg 
+                                   ? 'bg-stone-850 text-stone-100 border-stone-900 font-medium text-xs shadow-md' 
+                                   : 'bg-white border-[#d4c5b0] text-stone-800 font-medium text-xs'}
                          `}>
-                           {msg.isRoll && !isCombatLog && <Dice5 className="w-4 h-4 text-amber-600 inline-block mr-1 mb-0.5" />}
-                           {isCombatLog && <Sword className="w-4 h-4 text-red-700 inline-block mr-1 mb-0.5" />}
+                           {msg.isRoll && !isCombatLog && <Dice5 className="w-3.5 h-3.5 text-amber-700 inline-block mr-1.5 shrink-0" />}
+                           {isCombatLog && <Sword className="w-3.5 h-3.5 text-red-800 inline-block mr-1.5 shrink-0" />}
+                           
                            {actualText && (
-                             <span className={`whitespace-pre-wrap ${isCombatLog ? 'leading-relaxed font-bold' : 'font-medium text-xs'}`}>
+                             <span className="whitespace-pre-wrap leading-relaxed">
                                {actualText}
                              </span>
                            )}
                            
                            {lootMatch && (
-                             <div className="mt-2 bg-amber-50 border border-amber-200 p-2 rounded-xl flex items-center justify-between gap-3 w-full shadow-inner">
-                               <span className="text-[9px] font-black text-amber-800 uppercase flex items-center gap-1.5 truncate"><Pickaxe className="w-3.5 h-3.5 shrink-0 text-amber-600"/> {lootMatch[1]}</span>
-                               <button onClick={() => handleClaimLoot(lootMatch[1])} className="bg-gradient-to-b from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-900 px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all shadow-sm shrink-0 border border-amber-700">Klaim</button>
+                             <div className="mt-2.5 bg-amber-50 border border-amber-200 p-2.5 rounded-xl flex items-center justify-between gap-3 w-full shadow-inner">
+                               <span className="text-[8.5px] font-black text-amber-800 uppercase flex items-center gap-1.5 truncate"><Pickaxe className="w-3.5 h-3.5 shrink-0 text-amber-750"/> {lootMatch[1]}</span>
+                               <button onClick={() => handleClaimLoot(lootMatch[1])} className="bg-gradient-to-b from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-650 text-stone-900 px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all shadow-sm shrink-0 border border-amber-800 cursor-pointer">Klaim</button>
                              </div>
                            )}
                          </div>
                       </div>
                     );
-                 })}
-                 <div ref={chatEndRef} />
+                  })}
+                  <div ref={chatEndRef} />
               </div>
 
-              <div className="p-3 border-t border-stone-200 bg-white">
-                 <div className="flex gap-1.5 mb-2 overflow-x-auto pb-1 custom-scrollbar">
+              {/* Floating Smart Scroll unread messages alert badge */}
+              <AnimatePresence>
+                {showScrollBottomBadge && (
+                  <motion.button 
+                    initial={{ opacity: 0, y: 15, x: "-50%" }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 15 }}
+                    onClick={() => {
+                      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+                      setUnreadCount(0);
+                      setShowScrollBottomBadge(false);
+                    }}
+                    className="absolute bottom-18 left-1/2 z-30 bg-amber-850 hover:bg-amber-800 text-stone-100 px-4.5 py-2.5 rounded-full text-[8.5px] font-black uppercase tracking-wider shadow-lg border border-amber-900/30 flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+                  >
+                    <ChevronDown className="w-3.5 h-3.5 text-stone-100 animate-bounce" /> 
+                    Ada Cerita Baru {unreadCount > 0 ? `(${unreadCount})` : ''}
+                  </motion.button>
+                )}
+              </AnimatePresence>
+
+              {/* Chat action control deck */}
+              <div className="p-3 border-t border-stone-200 bg-white shrink-0">
+                 <div className="flex gap-1.5 mb-2 overflow-x-auto pb-1.5 custom-scrollbar">
                    {[4, 6, 8, 10, 12, 20].map(d => (
-                     <button key={d} onClick={() => rollDice(d)} className="shrink-0 bg-[#fdfaf6] border border-stone-300 hover:border-amber-400 hover:bg-amber-50 text-stone-600 text-[8px] font-black px-2 py-1.5 rounded-md uppercase tracking-widest transition-all shadow-sm flex items-center gap-1">
-                       <Dice5 className="w-2.5 h-2.5 text-amber-600/50" /> d{d}
+                     <button key={d} onClick={() => rollDice(d)} className="shrink-0 bg-[#fdfaf6] border border-stone-300 hover:border-amber-500 hover:bg-amber-50/50 text-stone-600 text-[8px] font-black px-2.5 py-2 rounded-lg uppercase tracking-widest transition-all shadow-xs flex items-center gap-1 cursor-pointer">
+                       <Dice5 className="w-3 h-3 text-amber-700/60" /> d{d}
                      </button>
                    ))}
                  </div>
@@ -970,10 +1085,10 @@ export default function CampaignClient({ initialCampaign }: { initialCampaign: a
                      type="text" 
                      value={chatMsg} 
                      onChange={e => setChatMsg(e.target.value)} 
-                     placeholder="Ketik pesan..." 
-                     className="flex-1 bg-[#fdfaf6] border border-stone-300 focus:border-amber-500 rounded-lg px-3 py-2 text-xs font-medium outline-none transition-all shadow-inner placeholder:text-stone-400" 
+                     placeholder="Ketik pesan naratif..." 
+                     className="flex-1 bg-[#fdfaf6] border border-[#d4c5b0] focus:border-amber-500 rounded-lg px-3 py-2 text-xs font-semibold outline-none transition-all shadow-inner placeholder:text-stone-400" 
                    />
-                   <button type="submit" className="bg-stone-800 hover:bg-stone-700 text-stone-100 px-3 py-2 rounded-lg shadow-sm transition-all flex items-center justify-center">
+                   <button type="submit" className="bg-stone-850 hover:bg-stone-850 text-stone-100 px-3.5 py-2 rounded-lg shadow-sm transition-all flex items-center justify-center cursor-pointer shrink-0">
                      <Send className="w-3.5 h-3.5" />
                    </button>
                  </form>
@@ -982,7 +1097,7 @@ export default function CampaignClient({ initialCampaign }: { initialCampaign: a
          </div>
       </div>
 
-      {/* Player HUD Hotbar */}
+      {/* Player HUD Hotbar control deck */}
       {!isDM && userChar && (
         <PlayerHUD userChar={userChar} combatState={campaign.combatState} selectedTargetId={selectedTargetId} onRollAttack={handleRollAttack} onCastSpell={handleCastSpell} />
       )}

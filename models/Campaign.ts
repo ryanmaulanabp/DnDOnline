@@ -100,6 +100,9 @@ const CampaignSchema = new Schema<ICampaign>(
   { timestamps: true }
 );
 
+CampaignSchema.index({ dmEmail: 1 });
+CampaignSchema.index({ characters: 1 });
+
 const Campaign = mongoose.models.Campaign || mongoose.model<ICampaign>("Campaign", CampaignSchema);
 
 export default Campaign;

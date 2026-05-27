@@ -1,7 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  serverActions: {
-    bodySizeLimit: '5mb', // Membesarkan limit dari 1MB menjadi 5MB
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '5mb',
+    },
   },
 };
 

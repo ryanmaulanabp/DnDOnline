@@ -118,6 +118,8 @@ const CharacterSchema = new Schema<ICharacter>(
   }
 );
 
+CharacterSchema.index({ userEmail: 1 });
+
 const Character = mongoose.models.Character || mongoose.model<ICharacter>("Character", CharacterSchema);
 
 export default Character;

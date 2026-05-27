@@ -36,5 +36,7 @@ const PollSchema = new Schema<IPoll>({
   status: { type: String, enum: ['open', 'closed'], default: 'open' }
 }, { timestamps: true });
 
+PollSchema.index({ campaignId: 1, createdAt: -1 });
+
 const Poll = mongoose.models.Poll || mongoose.model<IPoll>("Poll", PollSchema);
 export default Poll;
