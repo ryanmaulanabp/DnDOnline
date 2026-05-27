@@ -194,6 +194,13 @@ export interface StartingGoldShopPurchase {
   quantity: number;
 }
 
+// Choice tree for Path A Equipment packages
+export interface PathAEquipmentSelections {
+  classArmorChoice?: "a" | "b";
+  classWeaponChoice?: "a" | "b";
+  classPackChoice?: "a" | "b";
+}
+
 export interface CharacterCreationPayload {
   name: string;
   background: string;
@@ -205,14 +212,34 @@ export interface CharacterCreationPayload {
   speciesBonusFeatSelection?: string; // For Human additional Origin Feat name
   speciesBonusFeatMagicInitiateDetails?: MagicInitiateDetails; // If Human selects Magic Initiate
   magicInitiateBackgroundDetails?: MagicInitiateDetails; // If Background grants Magic Initiate
+  
+  // Class selection and granual Level 1 choices
   classSelection: ClassType;
   classSkillSelections: Skill[];
   classWeaponMasteriesSelections: string[]; // List of weapon names selected to master
   classPreparedSpellsSelections?: string[];
+  
+  // granual class-specific micro-decisions (Phase 2)
+  clericDivineOrder?: "Protector" | "Thaumaturgist";
+  druidPrimalOrder?: "Magician" | "Warden";
+  fighterFightingStyle?: "Archery" | "Defense" | "Dueling" | "Great Weapon Fighting" | "Interception" | "Two-Weapon Fighting";
+  paladinFightingStyle?: "Defense" | "Dueling" | "Great Weapon Fighting" | "Blessed Warrior";
+  rogueExpertiseSelections?: [Skill, Skill];
+  warlockInvocationsSelections?: [string, string];
+  warlockLessonsOfTheFirstOnesFeatSelection?: string; // If 'Lessons of the First Ones' is chosen
+  wizardSpellbookSelections?: string[]; // wizard spellbook catalog
+  
+  // Dynamic Wildcard resolvers for collisions (Phase 4)
+  wildcardSkillSelections?: Skill[];
+  wildcardToolSelections?: Tool[];
+  
   pointBuyStats: AbilityScores;
   chosenLanguages: string[]; // Custom languages (usually 2, after filtering background/species defaults)
+  
+  // Inventory (Phase 5)
   takeStartingGold: boolean;
   startingGoldPurchases?: StartingGoldShopPurchase[];
+  pathAEquipmentSelections?: PathAEquipmentSelections; // Choice tree selections
 }
 
 // ==========================================
@@ -230,8 +257,21 @@ export interface DerivedStats {
   initiative: number;
   passivePerception: number;
   carryingCapacityLbs: number;
-  spellSaveDC?: number;
-  spellAttackModifier?: number;
+  classSpellcasting?: {
+    spellSaveDC: number;
+    spellAttackModifier: number;
+    castingAbility: Ability;
+  };
+  originFeatSpellcasting?: {
+    spellSaveDC: number;
+    spellAttackModifier: number;
+    castingAbility: Ability;
+  };
+  speciesSpellcasting?: {
+    spellSaveDC: number;
+    spellAttackModifier: number;
+    castingAbility: Ability;
+  };
 }
 
 export interface CharacterSheet {

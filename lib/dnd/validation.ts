@@ -91,6 +91,12 @@ export const StartingGoldShopPurchaseSchema = z.object({
   quantity: z.number().int().positive(),
 });
 
+export const PathAEquipmentSelectionsSchema = z.object({
+  classArmorChoice: z.enum(["a", "b"]).optional(),
+  classWeaponChoice: z.enum(["a", "b"]).optional(),
+  classPackChoice: z.enum(["a", "b"]).optional(),
+});
+
 // ==========================================
 // 2. MASTER CHARACTER CREATION PAYLOAD SCHEMA
 // ==========================================
@@ -107,17 +113,36 @@ export const CharacterCreationPayloadSchema = z
     speciesBonusFeatSelection: z.string().optional(),
     speciesBonusFeatMagicInitiateDetails: MagicInitiateDetailsSchema.optional(),
     magicInitiateBackgroundDetails: MagicInitiateDetailsSchema.optional(),
+    
+    // Class selection and granual Level 1 choices
     classSelection: ClassTypeSchema,
     classSkillSelections: z.array(z.string()).min(2).max(4),
     classWeaponMasteriesSelections: z.array(z.string()).min(0).max(3),
     classPreparedSpellsSelections: z.array(z.string()).optional(),
+    
+    // granual class-specific micro-decisions (Phase 2)
+    clericDivineOrder: z.enum(["Protector", "Thaumaturgist"]).optional(),
+    druidPrimalOrder: z.enum(["Magician", "Warden"]).optional(),
+    fighterFightingStyle: z.enum(["Archery", "Defense", "Dueling", "Great Weapon Fighting", "Interception", "Two-Weapon Fighting"]).optional(),
+    paladinFightingStyle: z.enum(["Defense", "Dueling", "Great Weapon Fighting", "Blessed Warrior"]).optional(),
+    rogueExpertiseSelections: z.array(z.string()).min(2).max(2).optional(),
+    warlockInvocationsSelections: z.array(z.string()).min(2).max(2).optional(),
+    warlockLessonsOfTheFirstOnesFeatSelection: z.string().optional(),
+    wizardSpellbookSelections: z.array(z.string()).optional(),
+    
+    // Dynamic Wildcard resolvers for collisions (Phase 4)
+    wildcardSkillSelections: z.array(z.string()).optional(),
+    wildcardToolSelections: z.array(z.string()).optional(),
+    
     pointBuyStats: AbilityScoresSchema,
     chosenLanguages: z.array(z.string()).min(2).max(2),
+    
+    // Inventory Choices
     takeStartingGold: z.boolean(),
     startingGoldPurchases: z.array(StartingGoldShopPurchaseSchema).optional(),
+    pathAEquipmentSelections: PathAEquipmentSelectionsSchema.optional(),
   })
   .superRefine((data, ctx) => {
-    // Cast to the target payload type for full logic validation
     const payload = data as any;
     const result = validateCharacterPayload(payload);
 

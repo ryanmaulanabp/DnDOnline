@@ -18,6 +18,7 @@ import {
   ClassDetails,
   ASIAllocation,
   StartingGoldShopPurchase,
+  PathAEquipmentSelections,
   CharacterCreationPayload,
   CharacterValidationResult,
   CharacterSheet,
@@ -994,6 +995,19 @@ export function resolveDuplicateProficiencies(payload: CharacterCreationPayload)
     }
   }
 
+  // If there are duplicate skills and the user supplied wildcards, resolve them!
+  if (duplicateSkills.length > 0 && payload.wildcardSkillSelections) {
+    for (const ws of payload.wildcardSkillSelections) {
+      skillsSet.add(ws);
+    }
+  }
+
+  if (duplicateTools.length > 0 && payload.wildcardToolSelections) {
+    for (const wt of payload.wildcardToolSelections) {
+      toolsSet.add(wt);
+    }
+  }
+
   return {
     skills: Array.from(skillsSet),
     tools: Array.from(toolsSet),
@@ -1259,6 +1273,30 @@ export function validateCharacterPayload(payload: CharacterCreationPayload): Cha
             }
           }
         }
+
+        // Wizard prepared spell lists must exist inside their spellbook!
+        if (payload.classSelection === "Wizard" && payload.wizardSpellbookSelections) {
+          for (const sp of payload.classPreparedSpellsSelections) {
+            if (!payload.wizardSpellbookSelections.includes(sp)) {
+              errors.push(`[Class Error] Wizard prepared spell '${sp}' must exist inside their Spellbook list.`);
+            }
+          }
+        }
+      }
+    }
+
+    // Dynamic checks for class registry (Expertise/Invocations micro-decisions)
+    if (payload.classSelection === "Rogue") {
+      if (!payload.rogueExpertiseSelections || payload.rogueExpertiseSelections.length !== 2) {
+        errors.push(`[Class Error] Rogue must select exactly 2 Expertise skills.`);
+      }
+    }
+
+    if (payload.classSelection === "Warlock") {
+      if (!payload.warlockInvocationsSelections || payload.warlockInvocationsSelections.length !== 2) {
+        errors.push(`[Class Error] Warlock must select exactly TWO Level 1 eligible Invocations.`);
+      } else if (payload.warlockInvocationsSelections.includes("Lessons of the First Ones") && !payload.warlockLessonsOfTheFirstOnesFeatSelection) {
+        errors.push(`[Class Error] Lessons of the First Ones chosen. You must select 1 additional versatile Origin Feat.`);
       }
     }
   }
@@ -1284,6 +1322,27 @@ export function validateCharacterPayload(payload: CharacterCreationPayload): Cha
       errors.push(
         `[Language Error] Duplicate language selection in custom pool: '${payload.chosenLanguages[0]}' selected twice.`
       );
+    }
+  }
+
+  // Dynamic Collision resolution checks (Phase 4)
+  const duplicateResolver = resolveDuplicateProficiencies(payload);
+  if (duplicateResolver.duplicateSkills.length > 0) {
+    const requiredSkillsCount = duplicateResolver.duplicateSkills.length;
+    if (!payload.wildcardSkillSelections || payload.wildcardSkillSelections.length !== requiredSkillsCount) {
+      errors.push(
+        `[Collision Error] Duplicate skills detected: [${duplicateResolver.duplicateSkills.join(
+          ", "
+        )}]. You must select exactly ${requiredSkillsCount} alternative wildcard skills.`
+      );
+    } else {
+      // Ensure wildcard skill selections do not duplicate any other selected skills
+      const allSelectedSkills = [...payload.classSkillSelections, ...duplicateResolver.skills];
+      for (const ws of payload.wildcardSkillSelections) {
+        if (allSelectedSkills.filter((s) => s === ws).length > 1) {
+          errors.push(`[Collision Error] Wildcard skill '${ws}' is already selected.`);
+        }
+      }
     }
   }
 
@@ -1348,6 +1407,14 @@ export function buildCharacterSheet(payload: CharacterCreationPayload): Characte
     });
   }
 
+  // Recursively add Warlock invocations feat if Lessons of the First Ones was chosen
+  if (payload.classSelection === "Warlock" && payload.warlockInvocationsSelections?.includes("Lessons of the First Ones") && payload.warlockLessonsOfTheFirstOnesFeatSelection) {
+    activeFeats.push({
+      name: payload.warlockLessonsOfTheFirstOnesFeatSelection,
+      description: "Warlock Lessons of the First Ones bonus Origin Feat.",
+    });
+  }
+
   const activeFeatNames = activeFeats.map((f) => f.name);
 
   // 3. Max HP Calculation
@@ -1359,7 +1426,7 @@ export function buildCharacterSheet(payload: CharacterCreationPayload): Characte
     activeFeatNames
   );
 
-  // 4. Proficiencies and Duplicate Resolution
+  // 4. Proficiencies and Duplicate Wildcard Resolution (Phase 4)
   const profs = resolveDuplicateProficiencies(payload);
   const defaultLanguages = ["Common", ...bg.languages, ...species.languages];
   const finalLanguages = Array.from(new Set([...defaultLanguages, ...payload.chosenLanguages]));
@@ -1370,43 +1437,80 @@ export function buildCharacterSheet(payload: CharacterCreationPayload): Characte
     masteryProperty: getWeaponMastery(w) || ("Vex" as MasteryProperty),
   }));
 
-  // 6. Spellcasting derived stats
-  let spellSaveDC: number | undefined;
-  let spellAttackModifier: number | undefined;
+  // 6. SPELLCASTING MULTI-SOURCE MODIFIER ISOLATION (Phase 1)
+  let classSpellcasting: DerivedStats["classSpellcasting"];
+  let originFeatSpellcasting: DerivedStats["originFeatSpellcasting"];
+  let speciesSpellcasting: DerivedStats["speciesSpellcasting"];
+
+  const pb = 2; // Level 1 PB is always 2
+
+  // A. Class Spellcasting DC & Attack
   if (cls.spellcastingAbility) {
     const castingMod = abilityModifiers[cls.spellcastingAbility];
-    const pb = 2;
-    spellSaveDC = 8 + castingMod + pb;
-    spellAttackModifier = castingMod + pb;
+    classSpellcasting = {
+      spellSaveDC: 8 + castingMod + pb,
+      spellAttackModifier: castingMod + pb,
+      castingAbility: cls.spellcastingAbility,
+    };
   }
 
-  // 7. Innate spell lists
+  // B. Origin Feat Spellcasting DC & Attack
+  const magicInitiateFeat = activeFeats.find((f) => f.name === "Magic Initiate");
+  if (magicInitiateFeat && magicInitiateFeat.magicInitiateDetails) {
+    const castingAbility = magicInitiateFeat.magicInitiateDetails.castingAbility;
+    const castingMod = abilityModifiers[castingAbility];
+    originFeatSpellcasting = {
+      spellSaveDC: 8 + castingMod + pb,
+      spellAttackModifier: castingMod + pb,
+      castingAbility,
+    };
+  }
+
+  // C. Species Spellcasting DC & Attack
+  if (species.innateSpells) {
+    const castingAbility: Ability = payload.speciesBonusFeatMagicInitiateDetails?.castingAbility || "INT";
+    const castingMod = abilityModifiers[castingAbility];
+    speciesSpellcasting = {
+      spellSaveDC: 8 + castingMod + pb,
+      spellAttackModifier: castingMod + pb,
+      castingAbility,
+    };
+  }
+
+  const derivedStats: DerivedStats = {
+    armorClass: 10 + abilityModifiers.DEX, // Default unarmored AC
+    initiative: abilityModifiers.DEX + (activeFeatNames.includes("Alert") ? 2 : 0),
+    passivePerception: calculatePassivePerception(payload.pointBuyStats, payload.asiAllocations, profs.skills),
+    carryingCapacityLbs: calculateCarryingCapacity(finalAbilityScores.STR),
+    classSpellcasting,
+    originFeatSpellcasting,
+    speciesSpellcasting,
+  };
+
+  // 7. Innate Spells catalog
   const innateSpells: { name: string; level: number; castingAbility?: string; saveDC?: number }[] = [];
   if (species.innateSpells) {
     for (const isp of species.innateSpells) {
-      // Determine casting ability (ELF default to highest mental modifier, or INT)
-      const highestMentalAbility: Ability = abilityModifiers.INT >= abilityModifiers.WIS && abilityModifiers.INT >= abilityModifiers.CHA
-        ? "INT"
-        : abilityModifiers.WIS >= abilityModifiers.CHA
-        ? "WIS"
-        : "CHA";
-      const castingMod = abilityModifiers[highestMentalAbility];
       innateSpells.push({
         name: isp.name,
         level: isp.level,
-        castingAbility: highestMentalAbility,
-        saveDC: 8 + castingMod + 2,
+        castingAbility: speciesSpellcasting?.castingAbility,
+        saveDC: speciesSpellcasting?.spellSaveDC,
       });
     }
   }
 
-  // Elf / Tiefling special lineages
+  // Elf lineage branch speeds and darkvision range
+  let speedFt = species.speed;
+  let finalDarkvision = "60ft";
   if (payload.species === "Elf") {
     innateSpells.push({ name: "Keen Senses (Active Listener)", level: 0 });
-  } else if (payload.species === "Tiefling") {
-    innateSpells.push({ name: "Otherworldly Presence (Thaumaturgy)", level: 0 });
-  } else if (payload.species === "Aasimar") {
-    innateSpells.push({ name: "Light", level: 0 });
+    if (bg.equipment.includes("Wood")) { // If they select Wood Elf, override speed
+      speedFt = 35;
+    }
+    if (bg.equipment.includes("Drow")) { // If Drow, override Darkvision to 120ft
+      finalDarkvision = "120ft";
+    }
   }
 
   // 8. Class Features
@@ -1418,31 +1522,47 @@ export function buildCharacterSheet(payload: CharacterCreationPayload): Characte
     const usages = Math.max(1, abilityModifiers.CHA);
     classFeatures.push({ name: "Bardic Inspiration", description: `d6 die, ${usages} usages per long rest.`, value: usages });
   } else if (payload.classSelection === "Cleric") {
-    classFeatures.push({ name: "Divine Order", description: "Choice of Protector (heavy armor) or Thaumaturge (extra cantrip, +WIS to Arcana/Religion)." });
+    classFeatures.push({
+      name: "Divine Order",
+      description: payload.clericDivineOrder === "Protector"
+        ? "Divine Order: Protector (Heavy Armor and Martial Weapon proficiency added)."
+        : "Divine Order: Thaumaturgist (1 bonus Cleric cantrip, +WIS to Religion/Arcana).",
+      value: payload.clericDivineOrder || "Thaumaturgist",
+    });
   } else if (payload.classSelection === "Druid") {
     classFeatures.push({ name: "Druidic", description: "You know Druidic, the secret language of Druids." });
-    classFeatures.push({ name: "Wild Companion", description: "You can cast Find Familiar as a ritual without material components." });
+    classFeatures.push({
+      name: "Primal Order",
+      description: payload.druidPrimalOrder === "Warden"
+        ? "Primal Order: Warden (Medium Armor and Martial Weapon proficiency added)."
+        : "Primal Order: Magician (1 bonus Druid cantrip, +WIS to Nature/Arcana checks).",
+      value: payload.druidPrimalOrder || "Magician",
+    });
   } else if (payload.classSelection === "Fighter") {
     classFeatures.push({ name: "Second Wind", description: "1d10 + 1 healing, 2 usages per long rest." });
+    classFeatures.push({ name: "Fighting Style", description: `Fighting Style feat selection: ${payload.fighterFightingStyle || "Defense"}` });
   } else if (payload.classSelection === "Monk") {
     classFeatures.push({ name: "Unarmored Defense (Monk)", description: "AC = 10 + DEX Mod + WIS Mod when wearing no armor and no shield." });
     classFeatures.push({ name: "Martial Arts", description: "Unarmed strike deals 1d6 damage, Finesse/Light martial weapon scaling." });
   } else if (payload.classSelection === "Paladin") {
     classFeatures.push({ name: "Lay on Hands", description: "Healing pool of 5 HP per long rest." });
+    classFeatures.push({ name: "Fighting Style", description: `Paladin Fighting Style: ${payload.paladinFightingStyle || "Defense"}` });
   } else if (payload.classSelection === "Ranger") {
     classFeatures.push({ name: "Favored Enemy", description: "You always have Hunter's Mark prepared, and it does not require concentration." });
   } else if (payload.classSelection === "Rogue") {
     classFeatures.push({ name: "Sneak Attack", description: "Deals 1d6 extra damage once per turn on Finesse or Ranged weapon attacks." });
+    classFeatures.push({ name: "Expertise Registry", description: `Expertise skills selected: ${payload.rogueExpertiseSelections?.join(", ")}` });
   } else if (payload.classSelection === "Sorcerer") {
     classFeatures.push({ name: "Innate Sorcery", description: "+1 to spell attack rolls and spell save DCs for 1 minute, 2 usages per long rest." });
   } else if (payload.classSelection === "Warlock") {
     classFeatures.push({ name: "Pact Magic", description: "Level 1 spells cast using Pact Slots." });
-    classFeatures.push({ name: "Eldritch Invocations", description: "Gain 1 Eldritch Invocation at Level 1." });
+    classFeatures.push({ name: "Eldritch Invocations Registry", description: `Eldritch Invocations selected: ${payload.warlockInvocationsSelections?.join(", ")}` });
   } else if (payload.classSelection === "Wizard") {
     classFeatures.push({ name: "Arcane Recovery", description: "Recover up to 1 Level 1 spell slot during a short rest once per day." });
+    classFeatures.push({ name: "Wizard Spellbook", description: `Catalog contains: ${payload.wizardSpellbookSelections?.join(", ")}` });
   }
 
-  // 9. Inventory, Cost, and Weight Calculation
+  // 9. Inventory, Cost, and Weight Calculation (Path A Selections vs Path B Starting Gold)
   const inventory: { itemName: string; quantity: number; weightTotalLbs: number }[] = [];
   let startingGoldLeft = cls.startingGoldAverage;
   let totalWeightCarriedLbs = 0;
@@ -1463,12 +1583,35 @@ export function buildCharacterSheet(payload: CharacterCreationPayload): Characte
       }
     }
   } else {
-    // Standard Class + Background Packages
-    const packageItems = [...cls.startingEquipment, ...bg.equipment];
-    startingGoldLeft = 15; // Set average pocket gold for starting packages
+    // PATH A: Compile starting gear tree choices dynamically
+    const armorChoice = payload.pathAEquipmentSelections?.classArmorChoice || "a";
+    const weaponChoice = payload.pathAEquipmentSelections?.classWeaponChoice || "a";
 
-    for (const rawItemName of packageItems) {
-      // Find clean item name by checking sub-substring match
+    // Standard starting equipment allocation
+    const resolvedItems: string[] = [...bg.equipment];
+
+    if (payload.classSelection === "Fighter") {
+      if (armorChoice === "a") resolvedItems.push("Chain Mail");
+      else resolvedItems.push("Leather Armor");
+
+      if (weaponChoice === "a") {
+        resolvedItems.push("Greatsword", "Light Crossbow", "20 Bolts");
+      } else {
+        resolvedItems.push("Longsword", "Shield");
+      }
+      resolvedItems.push("Explorer's Pack");
+    } else if (payload.classSelection === "Rogue") {
+      if (armorChoice === "a") resolvedItems.push("Leather Armor");
+      if (weaponChoice === "a") resolvedItems.push("Dagger", "Shortsword");
+      else resolvedItems.push("Shortbow", "20 Arrows", "Rapier");
+      resolvedItems.push("Burglar's Pack");
+    } else {
+      resolvedItems.push(...cls.startingEquipment);
+    }
+
+    startingGoldLeft = 15; // Set pocket money
+
+    for (const rawItemName of resolvedItems) {
       let matchedName = "Backpack";
       let matchedWeight = 5;
 
@@ -1495,44 +1638,29 @@ export function buildCharacterSheet(payload: CharacterCreationPayload): Characte
     }
   }
 
-  // 10. Armor Class Calculation
-  let baseAC = 10 + abilityModifiers.DEX;
+  // 10. Armor Class (AC) Compilation
+  let finalAC = 10 + abilityModifiers.DEX;
   let shieldBonus = inventory.some((i) => i.itemName === "Shield") ? 2 : 0;
 
-  // Class specific unarmored defenses
+  // Unarmored modifiers
   if (payload.classSelection === "Barbarian" && !inventory.some((i) => i.itemName.includes("Armor"))) {
-    baseAC = 10 + abilityModifiers.DEX + abilityModifiers.CON;
+    finalAC = 10 + abilityModifiers.DEX + abilityModifiers.CON;
   } else if (payload.classSelection === "Monk" && !inventory.some((i) => i.itemName.includes("Armor")) && shieldBonus === 0) {
-    baseAC = 10 + abilityModifiers.DEX + abilityModifiers.WIS;
+    finalAC = 10 + abilityModifiers.DEX + abilityModifiers.WIS;
   }
 
-  // Check equipped armor
+  // Heavy / Medium armored checks
   if (inventory.some((i) => i.itemName === "Chain Mail")) {
-    baseAC = 16;
+    finalAC = 16;
   } else if (inventory.some((i) => i.itemName === "Leather Armor")) {
-    baseAC = 11 + abilityModifiers.DEX;
+    finalAC = 11 + abilityModifiers.DEX;
   } else if (inventory.some((i) => i.itemName === "Scale Mail")) {
-    baseAC = 14 + Math.min(2, abilityModifiers.DEX);
+    finalAC = 14 + Math.min(2, abilityModifiers.DEX);
   } else if (inventory.some((i) => i.itemName === "Plate Armor")) {
-    baseAC = 18;
+    finalAC = 18;
   }
 
-  const finalAC = baseAC + shieldBonus;
-
-  // 11. Alert Feat Initiative Listener
-  let initiative = abilityModifiers.DEX;
-  if (activeFeatNames.includes("Alert")) {
-    initiative += 2; // Level 1 PB is +2
-  }
-
-  const derivedStats: DerivedStats = {
-    armorClass: finalAC,
-    initiative,
-    passivePerception: calculatePassivePerception(payload.pointBuyStats, payload.asiAllocations, profs.skills),
-    carryingCapacityLbs: calculateCarryingCapacity(finalAbilityScores.STR),
-    spellSaveDC,
-    spellAttackModifier,
-  };
+  derivedStats.armorClass = finalAC + shieldBonus;
 
   return {
     name: payload.name,
@@ -1546,7 +1674,7 @@ export function buildCharacterSheet(payload: CharacterCreationPayload): Characte
     abilityModifiers,
     maxHP,
     hitDie: `1d${cls.hitDie}`,
-    speedFt: species.speed,
+    speedFt,
     proficiencies: {
       savingThrows: cls.savingThrows,
       skills: profs.skills,
